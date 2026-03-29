@@ -1,0 +1,47 @@
+# Changelog
+
+Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
+
+Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
+
+## [Unreleased]
+
+### Changed
+
+- Refonte de la presentation plein ecran pour ne conserver qu'une seule fenetre visuelle.
+- Integration du bouton `Options` directement dans la fenetre principale, avec un rendu plus discret.
+- Agrandissement de l'horloge analogique pour exploiter au mieux la hauteur et la largeur disponibles.
+- Ajustement fin du zoom camera de l'aperçu Three.js pour maximiser la taille du cadran sans depassement.
+- Affinage global du cadran analogique: aiguilles, repères, chiffres et cercle exterieur.
+- Uniformisation des repères minute et heure sur la couleur principale du theme.
+- Passage des aiguilles analogiques sur la couleur d'accent du theme pour ameliorer la lisibilite.
+- Reduction des repères horaires pour eviter qu'ils ne masquent les chiffres.
+- Alignement des repères horaires sur le meme rayon que les repères des minutes.
+- Rapprochement du cercle exterieur du bord des repères, avec une epaisseur tres fine.
+
+### Fixed
+
+- Correction d'un probleme de compilation dans `ClockDisplayGrid` lie a des props manquantes.
+
+## [0.1.0] - Snapshot documented on 2026-03-29
+
+Premiere entree du changelog creee a partir de l'etat actuel du projet.
+L'historique Git n'est pas disponible dans ce repertoire, donc cette version
+decrit la base existante plutot qu'une suite exacte de commits.
+
+### Added
+
+- Initialisation d'une application TypeScript, React et Vite.
+- Integration de Three.js dans le projet.
+- Mise en place d'une architecture `features` pour les modules horloges et alarmes.
+- Definition de types partages pour les affichages d'horloge et les themes.
+- Ajout d'un shell d'application et d'une structure de styles globale.
+- Ajout d'un systeme de themes avec selection depuis l'interface.
+- Ajout d'un selecteur de mode d'affichage de l'horloge.
+- Ajout d'une horloge analogique.
+- Ajout d'une horloge numerique type seven-segment.
+- Ajout d'une horloge a lamelles de type flip clock.
+- Ajout d'un hook de temps systeme pour synchroniser l'affichage.
+- Ajout d'un apercu 3D d'horloge avec rendu Three.js.
+- Ajout d'une documentation de demarrage dans `README.md`.
+- Ajout d'un espace reserve pour un futur module d'alarmes.
