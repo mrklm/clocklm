@@ -6,6 +6,8 @@ Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-03-30
+
 ### Changed
 
 - Refonte de la presentation plein ecran pour ne conserver qu'une seule fenetre visuelle.
@@ -18,6 +20,16 @@ Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 - Reduction des repères horaires pour eviter qu'ils ne masquent les chiffres.
 - Alignement des repères horaires sur le meme rayon que les repères des minutes.
 - Rapprochement du cercle exterieur du bord des repères, avec une epaisseur tres fine.
+- Ajout de la date dans le cadran analogique, avec mise en page sur trois lignes et inversion de couleur au passage des aiguilles.
+- Memorisation locale des reglages d'alarme dans le navigateur.
+
+### Added
+
+- Ajout d'une section `Alarmes` dans `Options` avec activation, heure de declenchement et choix de la source audio.
+- Ajout d'une lecture de test et d'un arret manuel pour verifier rapidement l'alarme.
+- Ajout d'un son d'alarme par defaut `assets/alarm.mp3` utilise quand aucun autre fichier local n'est choisi.
+- Ajout d'une selection rapide de 25 radios internet, avec une premiere selection orientee chill pop puis des styles varies.
+- Ajout d'un champ permettant de saisir une URL de radio personnalisee.
 
 ### Fixed
 

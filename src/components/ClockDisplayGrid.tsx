@@ -16,7 +16,15 @@ function renderClockCard(
 ) {
   switch (display.id) {
     case 'analog':
-      return <AnalogClockCard currentTime={currentTime} display={display} theme={theme} />;
+      return (
+        <AnalogClockCard
+          currentTime={currentTime}
+          display={display}
+          theme={theme}
+          alarmTime="07:00"
+          alarmEnabled={false}
+        />
+      );
     case 'seven-segment':
       return <SevenSegmentClockCard currentTime={currentTime} display={display} />;
     case 'flip':
