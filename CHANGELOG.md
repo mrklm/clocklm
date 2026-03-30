@@ -5,6 +5,13 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+
+## [1.0.5] - 2026-03-30
+
+### Ajouté
+
+ - Auto multi build
+
 ## [1.0.5] - 2026-03-30
 
 ### Modifié
