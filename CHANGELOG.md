@@ -5,10 +5,19 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.4] - 2026-03-30
+
+### Modifié
+
+ - Affichage radio - sous titre radio 
+
+### Ajouté
+
+ - + en dessous du nom de la radio: artiste - morceau
 
 ## [1.0.3] - 2026-03-30
 
-### Modifie
+### Modifié
  
 - Changement de source de radio -> Laut.fm
 - modification de selecteur de radio
@@ -16,14 +25,14 @@ Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 ## [1.0.1] - 2026-03-30
 
-### Modifie
+### Modifié
  
 - La mini horloge uniquement est grisée si l'alarme est désactivée. 
 
 
 ## [1.0.0] - 2026-03-30
 
-### Modifie
+### Modifié
 
 - Refonte de la presentation plein ecran pour ne conserver qu'une seule fenetre visuelle.
 
@@ -49,7 +58,7 @@ Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 - Memorisation locale des reglages d'alarme dans le navigateur.
 
-### Ajoute
+### Ajouté
 
 - Ajout d'une section `Alarmes` dans `Options` avec activation, heure de declenchement et choix de la source audio.
 
@@ -61,7 +70,7 @@ Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 - Ajout d'un champ permettant de saisir une URL de radio personnalisee.
 
-### Corrige
+### Corrigé
 
 - Correction d'un probleme de compilation dans `ClockDisplayGrid` lie a des props manquantes.
 
@@ -71,7 +80,7 @@ Premiere entree du changelog creee a partir de l'etat actuel du projet.
 L'historique Git n'est pas disponible dans ce repertoire, donc cette version
 decrit la base existante plutot qu'une suite exacte de commits.
 
-### Ajoute
+### Ajouté
 
 - Initialisation d'une application TypeScript, React et Vite.
 

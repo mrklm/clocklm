@@ -28,6 +28,11 @@ type LautFmStation = {
   pageUrl: string;
 };
 
+type LautFmCurrentSong = {
+  artistName: string;
+  title: string;
+};
+
 function createLautFmStation(id: string, name: string, style: string): LautFmStation {
   return {
     id,
@@ -214,6 +219,50 @@ async function searchLautFmStations(query: string, signal?: AbortSignal) {
   return Array.from(stations.values());
 }
 
+async function fetchLautFmCurrentSong(
+  stationId: string,
+  signal?: AbortSignal,
+): Promise<LautFmCurrentSong | null> {
+  const response = await fetch(
+    `https://api.laut.fm/station/${encodeURIComponent(stationId)}/current_song`,
+    { signal },
+  );
+
+  if (!response.ok) {
+    throw new Error('laut_fm_current_song_failed');
+  }
+
+  const song = (await response.json()) as {
+    title?: string;
+    artist?: {
+      name?: string;
+    };
+  };
+  const artistName = song.artist?.name?.trim() ?? '';
+  const title = song.title?.trim() ?? '';
+
+  if (!artistName && !title) {
+    return null;
+  }
+
+  return {
+    artistName,
+    title,
+  };
+}
+
+function formatStationCurrentSong(song: LautFmCurrentSong | null) {
+  if (!song) {
+    return '';
+  }
+
+  if (song.artistName && song.title) {
+    return `${song.artistName} - ${song.title}`;
+  }
+
+  return song.artistName || song.title;
+}
+
 function findStationById(stations: LautFmStation[], stationId: string) {
   return stations.find((station) => station.id === stationId) ?? null;
 }
@@ -288,6 +337,7 @@ type StationComboboxProps = {
   recentStations: LautFmStation[];
   searchValue: string;
   searchState?: 'idle' | 'loading' | 'error';
+  currentSongLabel?: string;
   disabled?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -305,6 +355,7 @@ function StationCombobox({
   recentStations,
   searchValue,
   searchState = 'idle',
+  currentSongLabel = '',
   disabled = false,
   open,
   onOpenChange,
@@ -326,8 +377,17 @@ function StationCombobox({
           id={buttonId}
           className={`station-combobox-trigger${disabled ? ' station-combobox-trigger--disabled' : ''}`}
         >
-          <span>{selectedStation.name}</span>
-          <span>{selectedStation.style}</span>
+          <span className="station-combobox-trigger-summary">
+            <span>{selectedStation.name}</span>
+            <span className="station-combobox-trigger-separator" aria-hidden="true">
+              {' '}
+              -{' '}
+            </span>
+            <span className="station-combobox-trigger-style">{selectedStation.style}</span>
+          </span>
+          {currentSongLabel ? (
+            <span className="station-combobox-trigger-meta">{currentSongLabel}</span>
+          ) : null}
         </summary>
 
         <div className="station-combobox-panel">
@@ -442,6 +502,8 @@ function App() {
   const [liveRadioPlaybackState, setLiveRadioPlaybackState] = useState<
     'idle' | 'playing' | 'paused' | 'error'
   >('idle');
+  const [liveRadioCurrentSong, setLiveRadioCurrentSong] =
+    useState<LautFmCurrentSong | null>(null);
   const [alarmRadioSearch, setAlarmRadioSearch] = useState('');
   const [liveRadioSearch, setLiveRadioSearch] = useState('');
   const [alarmRadioStations, setAlarmRadioStations] = useState(DEFAULT_LAUT_FM_STATIONS);
@@ -514,6 +576,7 @@ function App() {
     [alarmRadioStationId, alarmRadioStations, recentRadioStationIds],
   );
   const effectiveRadioUrl = alarmRadioUrl.trim() || selectedAlarmRadioStation.url;
+  const liveRadioCurrentSongLabel = formatStationCurrentSong(liveRadioCurrentSong);
   const themeFamily = getThemeFamily(activeThemeName);
   const themeStyle = {
     '--theme-bg': activeTheme.BG,
@@ -712,6 +775,38 @@ function App() {
 
   useEffect(() => {
     const controller = new AbortController();
+    let refreshTimer: number | null = null;
+
+    const loadCurrentSong = async () => {
+      try {
+        const song = await fetchLautFmCurrentSong(
+          selectedLiveRadioStation.id,
+          controller.signal,
+        );
+        setLiveRadioCurrentSong(song);
+      } catch (error) {
+        if ((error as DOMException).name !== 'AbortError') {
+          setLiveRadioCurrentSong(null);
+        }
+      }
+    };
+
+    setLiveRadioCurrentSong(null);
+    void loadCurrentSong();
+    refreshTimer = window.setInterval(() => {
+      void loadCurrentSong();
+    }, 15000);
+
+    return () => {
+      controller.abort();
+      if (refreshTimer !== null) {
+        window.clearInterval(refreshTimer);
+      }
+    };
+  }, [selectedLiveRadioStation.id]);
+
+  useEffect(() => {
+    const controller = new AbortController();
     const trimmedQuery = deferredAlarmRadioSearch.trim();
 
     if (!trimmedQuery) {
@@ -819,6 +914,7 @@ function App() {
               recentStations={liveRadioRecentStations}
               searchValue={liveRadioSearch}
               searchState={deferredLiveRadioSearch !== liveRadioSearch ? 'loading' : 'idle'}
+              currentSongLabel={liveRadioCurrentSongLabel}
               open={liveRadioComboboxOpen}
               onOpenChange={setLiveRadioComboboxOpen}
               onSearchChange={setLiveRadioSearch}

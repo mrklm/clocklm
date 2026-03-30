@@ -128,9 +128,23 @@
   cursor: pointer;
 }
 
-.station-combobox-trigger span:last-child {
+.station-combobox-trigger-summary {
+  display: block;
+  padding-right: 1.2rem;
+}
+
+.station-combobox-trigger-style,
+.station-combobox-trigger-meta {
   font-size: 0.74rem;
   color: color-mix(in srgb, var(--theme-fg) 68%, transparent);
+}
+
+.station-combobox-trigger-meta {
+  display: block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .station-combobox-trigger::-webkit-details-marker {
