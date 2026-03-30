@@ -16,6 +16,7 @@ import { DEFAULT_THEME_NAME, THEMES } from './themes/themes';
 import type { ClockDisplayDefinition, ClockDisplayId } from './types/clock';
 import type { ThemePalette } from './types/theme';
 import defaultAlarmSoundUrl from '../assets/alarm.mp3';
+import packageJson from '../package.json';
 import './styles/app.css';
 
 type AlarmSource = 'file' | 'radio';
@@ -26,6 +27,7 @@ type LautFmStation = {
   style: string;
   url: string;
   pageUrl: string;
+  provider?: 'lautfm' | 'custom';
 };
 
 type LautFmCurrentSong = {
@@ -40,11 +42,36 @@ function createLautFmStation(id: string, name: string, style: string): LautFmSta
     style,
     url: `https://stream.laut.fm/${id}`,
     pageUrl: `https://laut.fm/${id}`,
+    provider: 'lautfm',
+  };
+}
+
+function createCustomStation(
+  id: string,
+  name: string,
+  style: string,
+  url: string,
+  pageUrl: string,
+): LautFmStation {
+  return {
+    id,
+    name,
+    style,
+    url,
+    pageUrl,
+    provider: 'custom',
   };
 }
 
 const DEFAULT_LAUT_FM_STATIONS: LautFmStation[] = [
   createLautFmStation('allstations', 'Allstations', 'Multi-style / decouverte'),
+  createCustomStation(
+    'djam-radio',
+    'Le new Djam',
+    'Soul / funk / jazz / world',
+    'https://stream9.xdevel.com/audio1s976748-1515/stream/icecast.audio',
+    'https://www.djam.radio/',
+  ),
   createLautFmStation('light-radio', 'Light Radio', 'Pop / chill'),
   createLautFmStation('clubhits', 'Clubhits', 'Dance / electro'),
   createLautFmStation('sound', 'Sound', 'Country / americana'),
@@ -56,6 +83,8 @@ const DEFAULT_LAUT_FM_STATIONS: LautFmStation[] = [
   createLautFmStation('rockmag', 'Rockmag', 'Rock'),
 ];
 const ALARM_SETTINGS_STORAGE_KEY = 'clocklm.alarm-settings';
+const APP_SIGNATURE = `Clocklm v${packageJson.version}`;
+const APP_REPOSITORY_URL = 'https://github.com/mrklm/clocklm';
 
 function renderActiveDisplay(
   display: ClockDisplayDefinition,
@@ -261,6 +290,10 @@ function formatStationCurrentSong(song: LautFmCurrentSong | null) {
   }
 
   return song.artistName || song.title;
+}
+
+function supportsLautFmCurrentSong(station: LautFmStation) {
+  return station.provider !== 'custom';
 }
 
 function findStationById(stations: LautFmStation[], stationId: string) {
@@ -774,6 +807,11 @@ function App() {
   }, [liveRadioStationId]);
 
   useEffect(() => {
+    if (!supportsLautFmCurrentSong(selectedLiveRadioStation)) {
+      setLiveRadioCurrentSong(null);
+      return;
+    }
+
     const controller = new AbortController();
     let refreshTimer: number | null = null;
 
@@ -895,7 +933,11 @@ function App() {
   }, [alarmEnabled, alarmSource, alarmTime, currentTime, effectiveRadioUrl, alarmFile]);
 
   return (
-    <AppShell style={themeStyle}>
+    <AppShell
+      style={themeStyle}
+      appSignature={APP_SIGNATURE}
+      appSignatureHref={APP_REPOSITORY_URL}
+    >
       <section className="clock-layout" data-theme-family={themeFamily}>
         <article
           className={`display-stage-card ${

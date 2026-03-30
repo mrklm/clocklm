@@ -305,12 +305,15 @@
   display: grid;
   gap: 0.65rem;
   min-width: min(360px, calc(100vw - 1.6rem));
+  max-height: min(78vh, 42rem);
   padding: 0.72rem;
   border-radius: 16px;
   border: 1px solid color-mix(in srgb, var(--theme-fg) 12%, transparent);
   background: color-mix(in srgb, var(--theme-panel) 92%, black);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(18px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .options-section {

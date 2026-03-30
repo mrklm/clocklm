@@ -27,6 +27,33 @@ body {
   background: var(--theme-bg, #08111f);
 }
 
+.app-shell {
+  position: relative;
+  min-height: 100vh;
+}
+
+.app-signature {
+  position: fixed;
+  right: 1rem;
+  bottom: 0.8rem;
+  z-index: 40;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--theme-fg, #f7f4ed) 72%, transparent);
+  background: color-mix(in srgb, var(--theme-panel, #10243d) 52%, transparent);
+  backdrop-filter: blur(10px);
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  user-select: none;
+  text-decoration: none;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+a.app-signature:hover {
+  color: var(--theme-fg, #f7f4ed);
+  background: color-mix(in srgb, var(--theme-panel, #10243d) 72%, transparent);
+}
+
 button,
 input,
 select,
