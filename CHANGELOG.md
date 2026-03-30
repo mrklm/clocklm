@@ -5,7 +5,7 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
-## [1.0.6] - 2026-03-30
+## [1.0.7] - 2026-03-30
 
 ### Ajouté
 
@@ -13,11 +13,16 @@ Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
  - Nom du programme cliquable -> lien
  - Le New Djam ajouté à la liste des radios
 
-## [1.0.5] - 2026-03-30
+## [1.0.6] - 2026-03-30
 
 ### Ajouté
 
  - Auto multi build
+
+## [1.0.5] - 2026-03-30
+
+### Modifié
+
  - Amelioration rendu date 
 
 ## [1.0.4] - 2026-03-30
