@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import {
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 import { AppShell } from './components/AppShell';
 import { AnalogClockCard } from './features/clocks/components/AnalogClockCard';
 import { FlipClockCard } from './features/clocks/components/FlipClockCard';
@@ -13,160 +20,36 @@ import './styles/app.css';
 
 type AlarmSource = 'file' | 'radio';
 
-const RADIO_PRESETS = [
-  {
-    id: 'groove-salad',
-    name: 'Groove Salad',
-    style: 'Chill ambient / downtempo',
-    url: 'https://somafm.com/m3u/groovesalad256.m3u',
-  },
-  {
-    id: 'indie-pop-rocks',
-    name: 'Indie Pop Rocks!',
-    style: 'Indie pop doux',
-    url: 'https://somafm.com/m3u/indiepop.m3u',
-  },
-  {
-    id: 'poptron',
-    name: 'PopTron',
-    style: 'Electro pop / indie dance',
-    url: 'https://somafm.com/m3u/poptron.m3u',
-  },
-  {
-    id: 'drone-zone',
-    name: 'Drone Zone',
-    style: 'Ambient profond',
-    url: 'https://somafm.com/m3u/dronezone256.m3u',
-  },
-  {
-    id: 'deep-space-one',
-    name: 'Deep Space One',
-    style: 'Ambient spatial',
-    url: 'https://somafm.com/m3u/deepspaceone.m3u',
-  },
-  {
-    id: 'groove-salad-classic',
-    name: 'Groove Salad Classic',
-    style: 'Chillout classique',
-    url: 'https://somafm.com/m3u/gsclassic.m3u',
-  },
-  {
-    id: 'space-station-soma',
-    name: 'Space Station Soma',
-    style: 'Electronica spacieuse',
-    url: 'https://somafm.com/m3u/spacestation.m3u',
-  },
-  {
-    id: 'underground-80s',
-    name: 'Underground 80s',
-    style: 'Synthpop / new wave',
-    url: 'https://somafm.com/m3u/u80s.m3u',
-  },
-  {
-    id: 'secret-agent',
-    name: 'Secret Agent',
-    style: 'Lounge espion',
-    url: 'https://somafm.com/m3u/secretagent.m3u',
-  },
-  {
-    id: 'lush',
-    name: 'Lush',
-    style: 'Voix feminines / mellow',
-    url: 'https://somafm.com/m3u/lush.m3u',
-  },
-  {
-    id: 'left-coast-70s',
-    name: 'Left Coast 70s',
-    style: 'Soft rock seventies',
-    url: 'https://somafm.com/m3u/seventies320.m3u',
-  },
-  {
-    id: 'synphaera-radio',
-    name: 'Synphaera Radio',
-    style: 'Ambient moderne',
-    url: 'https://somafm.com/m3u/synphaera256.m3u',
-  },
-  {
-    id: 'folk-forward',
-    name: 'Folk Forward',
-    style: 'Indie folk',
-    url: 'https://somafm.com/m3u/folkfwd.m3u',
-  },
-  {
-    id: 'def-con-radio',
-    name: 'DEF CON Radio',
-    style: 'Electronique / hacking',
-    url: 'https://somafm.com/m3u/defcon256.m3u',
-  },
-  {
-    id: 'beat-blender',
-    name: 'Beat Blender',
-    style: 'Deep house / chill nocturne',
-    url: 'https://somafm.com/m3u/beatblender.m3u',
-  },
-  {
-    id: 'thistle-radio',
-    name: 'ThistleRadio',
-    style: 'Celtique',
-    url: 'https://somafm.com/m3u/thistle.m3u',
-  },
-  {
-    id: 'boot-liquor',
-    name: 'Boot Liquor',
-    style: 'Americana / roots',
-    url: 'https://somafm.com/m3u/bootliquor320.m3u',
-  },
-  {
-    id: 'sonic-universe',
-    name: 'Sonic Universe',
-    style: 'Jazz aventureux',
-    url: 'https://somafm.com/m3u/sonicuniverse256.m3u',
-  },
-  {
-    id: 'bossa-beyond',
-    name: 'Bossa Beyond',
-    style: 'Bossa / samba douce',
-    url: 'https://somafm.com/m3u/bossa256.m3u',
-  },
-  {
-    id: 'the-dark-zone',
-    name: 'The Dark Zone',
-    style: 'Dark ambient',
-    url: 'https://somafm.com/m3u/darkzone256.m3u',
-  },
-  {
-    id: 'the-trip',
-    name: 'The Trip',
-    style: 'Progressive house / trance',
-    url: 'https://somafm.com/m3u/thetrip.m3u',
-  },
-  {
-    id: 'heavyweight-reggae',
-    name: 'Heavyweight Reggae',
-    style: 'Reggae / ska / rocksteady',
-    url: 'https://somafm.com/m3u/reggae256.m3u',
-  },
-  {
-    id: 'suburbs-of-goa',
-    name: 'Suburbs of Goa',
-    style: 'World beats / desi',
-    url: 'https://somafm.com/m3u/suburbsofgoa.m3u',
-  },
-  {
-    id: 'fluid',
-    name: 'Fluid',
-    style: 'Instrumental hip-hop / future soul',
-    url: 'https://somafm.com/m3u/fluid.m3u',
-  },
-  {
-    id: 'illinois-street-lounge',
-    name: 'Illinois Street Lounge',
-    style: 'Exotica / lounge vintage',
-    url: 'https://somafm.com/m3u/illstreet.m3u',
-  },
-] as const;
+type LautFmStation = {
+  id: string;
+  name: string;
+  style: string;
+  url: string;
+  pageUrl: string;
+};
 
-type AlarmRadioPresetId = (typeof RADIO_PRESETS)[number]['id'];
+function createLautFmStation(id: string, name: string, style: string): LautFmStation {
+  return {
+    id,
+    name,
+    style,
+    url: `https://stream.laut.fm/${id}`,
+    pageUrl: `https://laut.fm/${id}`,
+  };
+}
+
+const DEFAULT_LAUT_FM_STATIONS: LautFmStation[] = [
+  createLautFmStation('allstations', 'Allstations', 'Multi-style / decouverte'),
+  createLautFmStation('light-radio', 'Light Radio', 'Pop / chill'),
+  createLautFmStation('clubhits', 'Clubhits', 'Dance / electro'),
+  createLautFmStation('sound', 'Sound', 'Country / americana'),
+  createLautFmStation('gothica', 'Gothica', 'Rock gothique'),
+  createLautFmStation('vaporwave', 'Vaporwave', 'Vaporwave / retro'),
+  createLautFmStation('bluesrockcafe', 'Blues Rock Cafe', 'Blues / rock'),
+  createLautFmStation('jazzrockfusion', 'Jazz Rock Fusion', 'Jazz fusion / funk'),
+  createLautFmStation('natureadio', 'Naturadio', 'Ambient / folk / pop'),
+  createLautFmStation('rockmag', 'Rockmag', 'Rock'),
+];
 const ALARM_SETTINGS_STORAGE_KEY = 'clocklm.alarm-settings';
 
 function renderActiveDisplay(
@@ -252,6 +135,249 @@ async function resolveStreamUrl(sourceUrl: string) {
   return streamLine.replace(/^File\d+=/i, '');
 }
 
+function normalizeLautFmStation(station: {
+  name?: unknown;
+  display_name?: unknown;
+  format?: unknown;
+  genres?: unknown;
+  page_url?: unknown;
+}): LautFmStation | null {
+  const id = typeof station.name === 'string' ? station.name.trim() : '';
+  if (!id) {
+    return null;
+  }
+
+  const displayName =
+    typeof station.display_name === 'string' && station.display_name.trim()
+      ? station.display_name.trim()
+      : id;
+  const format = typeof station.format === 'string' ? station.format.trim() : '';
+  const genres = Array.isArray(station.genres)
+    ? station.genres.filter(
+        (genre): genre is string => typeof genre === 'string' && genre.trim().length > 0,
+      )
+    : [];
+  const style = format || genres.slice(0, 3).join(' / ') || 'Station laut.fm';
+  const pageUrl =
+    typeof station.page_url === 'string' && station.page_url.trim()
+      ? station.page_url.trim()
+      : `https://laut.fm/${id}`;
+
+  return {
+    id,
+    name: displayName,
+    style,
+    url: `https://stream.laut.fm/${id}`,
+    pageUrl,
+  };
+}
+
+async function searchLautFmStations(query: string, signal?: AbortSignal) {
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery) {
+    return DEFAULT_LAUT_FM_STATIONS;
+  }
+
+  const response = await fetch(
+    `https://api.laut.fm/search/stations?query=${encodeURIComponent(trimmedQuery)}&limit=30`,
+    { signal },
+  );
+  if (!response.ok) {
+    throw new Error('laut_fm_search_failed');
+  }
+
+  const payload = (await response.json()) as {
+    results?: Array<{
+      items?: Array<{
+        station?: {
+          name?: unknown;
+          display_name?: unknown;
+          format?: unknown;
+          genres?: unknown;
+          page_url?: unknown;
+        };
+      }>;
+    }>;
+  };
+
+  const stations = new Map<string, LautFmStation>();
+
+  payload.results?.forEach((result) => {
+    result.items?.forEach((item) => {
+      const station = normalizeLautFmStation(item.station ?? {});
+      if (station) {
+        stations.set(station.id, station);
+      }
+    });
+  });
+
+  return Array.from(stations.values());
+}
+
+function findStationById(stations: LautFmStation[], stationId: string) {
+  return stations.find((station) => station.id === stationId) ?? null;
+}
+
+function mergeStations(primary: LautFmStation[], secondary: LautFmStation[]) {
+  const stations = new Map<string, LautFmStation>();
+  [...primary, ...secondary].forEach((station) => {
+    stations.set(station.id, station);
+  });
+  return Array.from(stations.values());
+}
+
+function getStationSuggestions(
+  stations: LautFmStation[],
+  query: string,
+  selectedStationId: string,
+  limit = 10,
+) {
+  const trimmedQuery = query.trim().toLowerCase();
+  if (!trimmedQuery) {
+    return [];
+  }
+
+  return stations
+    .filter((station) => {
+      const haystack = `${station.name} ${station.style} ${station.id}`.toLowerCase();
+      return haystack.includes(trimmedQuery);
+    })
+    .sort((left, right) => {
+      if (left.id === selectedStationId) {
+        return -1;
+      }
+      if (right.id === selectedStationId) {
+        return 1;
+      }
+      return left.name.localeCompare(right.name);
+    })
+    .slice(0, limit);
+}
+
+function getRecentStations(
+  stations: LautFmStation[],
+  recentStationIds: string[],
+  selectedStationId: string,
+  limit = 10,
+) {
+  const stationMap = new Map(stations.map((station) => [station.id, station]));
+  const recentStations = recentStationIds
+    .map((stationId) => stationMap.get(stationId))
+    .filter((station): station is LautFmStation => Boolean(station));
+
+  if (!recentStations.some((station) => station.id === selectedStationId)) {
+    const selectedStation = stationMap.get(selectedStationId);
+    if (selectedStation) {
+      recentStations.unshift(selectedStation);
+    }
+  }
+
+  const fallbackStations = stations.filter(
+    (station) => !recentStations.some((recentStation) => recentStation.id === station.id),
+  );
+
+  return [...recentStations, ...fallbackStations].slice(0, limit);
+}
+
+type StationComboboxProps = {
+  buttonId: string;
+  searchId: string;
+  label?: string;
+  selectedStation: LautFmStation;
+  suggestions: LautFmStation[];
+  recentStations: LautFmStation[];
+  searchValue: string;
+  searchState?: 'idle' | 'loading' | 'error';
+  disabled?: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSearchChange: (value: string) => void;
+  onSelect: (stationId: string) => void;
+  className?: string;
+};
+
+function StationCombobox({
+  buttonId,
+  searchId,
+  label,
+  selectedStation,
+  suggestions,
+  recentStations,
+  searchValue,
+  searchState = 'idle',
+  disabled = false,
+  open,
+  onOpenChange,
+  onSearchChange,
+  onSelect,
+  className,
+}: StationComboboxProps) {
+  const displayedStations = searchValue.trim() ? suggestions : recentStations;
+
+  return (
+    <div className={className}>
+      {label ? <span className="field-label">{label}</span> : null}
+      <details
+        className={`station-combobox${open ? ' station-combobox--open' : ''}`}
+        open={open}
+        onToggle={(event) => onOpenChange((event.currentTarget as HTMLDetailsElement).open)}
+      >
+        <summary
+          id={buttonId}
+          className={`station-combobox-trigger${disabled ? ' station-combobox-trigger--disabled' : ''}`}
+        >
+          <span>{selectedStation.name}</span>
+          <span>{selectedStation.style}</span>
+        </summary>
+
+        <div className="station-combobox-panel">
+          <input
+            id={searchId}
+            className="text-field-input station-combobox-search"
+            type="search"
+            inputMode="search"
+            placeholder="Nom, genre, artiste..."
+            value={searchValue}
+            onChange={(event) => onSearchChange(event.target.value)}
+            disabled={disabled}
+          />
+
+          <p className="station-suggestions-label">
+            {searchValue.trim() ? 'Occurrences' : 'Dernieres radios selectionnees'}
+          </p>
+
+          <div className="station-suggestions" role="listbox" aria-labelledby={buttonId}>
+            {displayedStations.length > 0 ? (
+              displayedStations.map((station) => (
+                <button
+                  key={station.id}
+                  type="button"
+                  className={`station-suggestion${
+                    station.id === selectedStation.id ? ' station-suggestion--active' : ''
+                  }`}
+                  onClick={() => onSelect(station.id)}
+                  disabled={disabled}
+                >
+                  <span>{station.name}</span>
+                  <span>{station.style}</span>
+                </button>
+              ))
+            ) : (
+              <p className="station-suggestions-empty">
+                {searchState === 'loading'
+                  ? 'Recherche en cours...'
+                  : searchState === 'error'
+                    ? 'Recherche indisponible.'
+                    : 'Aucune occurrence pour cette recherche.'}
+              </p>
+            )}
+          </div>
+        </div>
+      </details>
+    </div>
+  );
+}
+
 function readStoredAlarmSettings() {
   if (typeof window === 'undefined') {
     return null;
@@ -268,10 +394,11 @@ function readStoredAlarmSettings() {
       alarmTime?: string;
       alarmAudioEnabled?: boolean;
       alarmSource?: AlarmSource;
-      alarmRadioPresetId?: AlarmRadioPresetId;
+      alarmRadioStationId?: string;
       alarmRadioUrl?: string;
       alarmVisualEnabled?: boolean;
       alarmVisualColor?: string;
+      recentRadioStationIds?: string[];
     };
   } catch {
     return null;
@@ -293,8 +420,8 @@ function App() {
     storedAlarmSettings?.alarmSource ?? 'file',
   );
   const [alarmFile, setAlarmFile] = useState<File | null>(null);
-  const [alarmRadioPresetId, setAlarmRadioPresetId] = useState<AlarmRadioPresetId>(
-    storedAlarmSettings?.alarmRadioPresetId ?? RADIO_PRESETS[0].id,
+  const [alarmRadioStationId, setAlarmRadioStationId] = useState(
+    storedAlarmSettings?.alarmRadioStationId ?? DEFAULT_LAUT_FM_STATIONS[0].id,
   );
   const [alarmRadioUrl, setAlarmRadioUrl] = useState(
     storedAlarmSettings?.alarmRadioUrl ?? '',
@@ -309,17 +436,31 @@ function App() {
     'idle' | 'ringing' | 'error'
   >('idle');
   const [alarmStatusMessage, setAlarmStatusMessage] = useState('');
-  const [liveRadioPresetId, setLiveRadioPresetId] = useState<AlarmRadioPresetId>(
-    RADIO_PRESETS[0].id,
+  const [liveRadioStationId, setLiveRadioStationId] = useState(
+    DEFAULT_LAUT_FM_STATIONS[0].id,
   );
   const [liveRadioPlaybackState, setLiveRadioPlaybackState] = useState<
     'idle' | 'playing' | 'paused' | 'error'
   >('idle');
+  const [alarmRadioSearch, setAlarmRadioSearch] = useState('');
+  const [liveRadioSearch, setLiveRadioSearch] = useState('');
+  const [alarmRadioStations, setAlarmRadioStations] = useState(DEFAULT_LAUT_FM_STATIONS);
+  const [liveRadioStations, setLiveRadioStations] = useState(DEFAULT_LAUT_FM_STATIONS);
+  const [recentRadioStationIds, setRecentRadioStationIds] = useState(
+    storedAlarmSettings?.recentRadioStationIds ?? [],
+  );
+  const [alarmRadioSearchState, setAlarmRadioSearchState] = useState<
+    'idle' | 'loading' | 'error'
+  >('idle');
+  const [alarmRadioComboboxOpen, setAlarmRadioComboboxOpen] = useState(false);
+  const [liveRadioComboboxOpen, setLiveRadioComboboxOpen] = useState(false);
   const currentTime = useSystemTime();
   const alarmAudioRef = useRef<HTMLAudioElement | null>(null);
   const alarmObjectUrlRef = useRef<string | null>(null);
   const lastTriggeredAlarmMinuteRef = useRef<string | null>(null);
   const liveRadioAudioRef = useRef<HTMLAudioElement | null>(null);
+  const deferredAlarmRadioSearch = useDeferredValue(alarmRadioSearch);
+  const deferredLiveRadioSearch = useDeferredValue(liveRadioSearch);
 
   const activeDisplay = useMemo(
     () =>
@@ -328,11 +469,51 @@ function App() {
     [activeDisplayId],
   );
   const activeTheme = THEMES[activeThemeName] ?? THEMES[DEFAULT_THEME_NAME];
-  const selectedRadioPreset =
-    RADIO_PRESETS.find((preset) => preset.id === alarmRadioPresetId) ?? RADIO_PRESETS[0];
-  const selectedLiveRadioPreset =
-    RADIO_PRESETS.find((preset) => preset.id === liveRadioPresetId) ?? RADIO_PRESETS[0];
-  const effectiveRadioUrl = alarmRadioUrl.trim() || selectedRadioPreset.url;
+  const selectedAlarmRadioStation =
+    findStationById(alarmRadioStations, alarmRadioStationId) ??
+    findStationById(DEFAULT_LAUT_FM_STATIONS, alarmRadioStationId) ??
+    DEFAULT_LAUT_FM_STATIONS[0];
+  const selectedLiveRadioStation =
+    findStationById(liveRadioStations, liveRadioStationId) ??
+    findStationById(DEFAULT_LAUT_FM_STATIONS, liveRadioStationId) ??
+    DEFAULT_LAUT_FM_STATIONS[0];
+  const liveRadioSuggestions = useMemo(
+    () =>
+      getStationSuggestions(
+        mergeStations(liveRadioStations, DEFAULT_LAUT_FM_STATIONS),
+        liveRadioSearch,
+        liveRadioStationId,
+      ),
+    [liveRadioSearch, liveRadioStationId, liveRadioStations],
+  );
+  const alarmRadioSuggestions = useMemo(
+    () =>
+      getStationSuggestions(
+        mergeStations(alarmRadioStations, DEFAULT_LAUT_FM_STATIONS),
+        alarmRadioSearch,
+        alarmRadioStationId,
+      ),
+    [alarmRadioSearch, alarmRadioStationId, alarmRadioStations],
+  );
+  const liveRadioRecentStations = useMemo(
+    () =>
+      getRecentStations(
+        mergeStations(liveRadioStations, DEFAULT_LAUT_FM_STATIONS),
+        recentRadioStationIds,
+        liveRadioStationId,
+      ),
+    [liveRadioStationId, liveRadioStations, recentRadioStationIds],
+  );
+  const alarmRadioRecentStations = useMemo(
+    () =>
+      getRecentStations(
+        mergeStations(alarmRadioStations, DEFAULT_LAUT_FM_STATIONS),
+        recentRadioStationIds,
+        alarmRadioStationId,
+      ),
+    [alarmRadioStationId, alarmRadioStations, recentRadioStationIds],
+  );
+  const effectiveRadioUrl = alarmRadioUrl.trim() || selectedAlarmRadioStation.url;
   const themeFamily = getThemeFamily(activeThemeName);
   const themeStyle = {
     '--theme-bg': activeTheme.BG,
@@ -433,7 +614,7 @@ function App() {
     stopAlarmPlayback();
 
     try {
-      const sourceUrl = await resolveStreamUrl(selectedLiveRadioPreset.url);
+      const sourceUrl = await resolveStreamUrl(selectedLiveRadioStation.url);
       const audio = new Audio(sourceUrl);
       audio.preload = 'none';
       liveRadioAudioRef.current = audio;
@@ -455,6 +636,10 @@ function App() {
     setLiveRadioPlaybackState('paused');
   };
 
+  const rememberRecentStation = (stationId: string) => {
+    setRecentRadioStationIds((currentIds) => [stationId, ...currentIds.filter((id) => id !== stationId)].slice(0, 10));
+  };
+
   useEffect(() => {
     return () => {
       stopAlarmPlayback();
@@ -470,10 +655,11 @@ function App() {
         alarmTime,
         alarmAudioEnabled,
         alarmSource,
-        alarmRadioPresetId,
+        alarmRadioStationId,
         alarmRadioUrl,
         alarmVisualEnabled,
         alarmVisualColor,
+        recentRadioStationIds,
       }),
     );
   }, [
@@ -481,10 +667,11 @@ function App() {
     alarmTime,
     alarmAudioEnabled,
     alarmSource,
-    alarmRadioPresetId,
+    alarmRadioStationId,
     alarmRadioUrl,
     alarmVisualEnabled,
     alarmVisualColor,
+    recentRadioStationIds,
   ]);
 
   useEffect(() => {
@@ -521,7 +708,77 @@ function App() {
     }
 
     void startLiveRadioPlayback();
-  }, [liveRadioPresetId]);
+  }, [liveRadioStationId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const trimmedQuery = deferredAlarmRadioSearch.trim();
+
+    if (!trimmedQuery) {
+      setAlarmRadioStations(
+        mergeStations(
+          DEFAULT_LAUT_FM_STATIONS,
+          selectedAlarmRadioStation ? [selectedAlarmRadioStation] : [],
+        ),
+      );
+      setAlarmRadioSearchState('idle');
+      return () => {
+        controller.abort();
+      };
+    }
+
+    setAlarmRadioSearchState('loading');
+    searchLautFmStations(trimmedQuery, controller.signal)
+      .then((stations) => {
+        setAlarmRadioStations(
+          mergeStations(stations, selectedAlarmRadioStation ? [selectedAlarmRadioStation] : []),
+        );
+        setAlarmRadioSearchState('idle');
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return;
+        }
+        setAlarmRadioSearchState('error');
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [deferredAlarmRadioSearch, selectedAlarmRadioStation]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const trimmedQuery = deferredLiveRadioSearch.trim();
+
+    if (!trimmedQuery) {
+      setLiveRadioStations(
+        mergeStations(
+          DEFAULT_LAUT_FM_STATIONS,
+          selectedLiveRadioStation ? [selectedLiveRadioStation] : [],
+        ),
+      );
+      return () => {
+        controller.abort();
+      };
+    }
+
+    searchLautFmStations(trimmedQuery, controller.signal)
+      .then((stations) => {
+        setLiveRadioStations(
+          mergeStations(stations, selectedLiveRadioStation ? [selectedLiveRadioStation] : []),
+        );
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return;
+        }
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [deferredLiveRadioSearch, selectedLiveRadioStation]);
 
   useEffect(() => {
     if (!alarmEnabled) {
@@ -554,22 +811,25 @@ function App() {
           data-display-id={activeDisplayId}
         >
           <div className="live-radio-controls">
-            <label className="live-radio-select" htmlFor="live-radio-select">
-              <span className="sr-only">Radio en lecture directe</span>
-              <select
-                id="live-radio-select"
-                value={liveRadioPresetId}
-                onChange={(event) =>
-                  setLiveRadioPresetId(event.target.value as AlarmRadioPresetId)
-                }
-              >
-                {RADIO_PRESETS.map((preset) => (
-                  <option key={preset.id} value={preset.id}>
-                    {preset.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <StationCombobox
+              buttonId="live-radio-select"
+              searchId="live-radio-search"
+              selectedStation={selectedLiveRadioStation}
+              suggestions={liveRadioSuggestions}
+              recentStations={liveRadioRecentStations}
+              searchValue={liveRadioSearch}
+              searchState={deferredLiveRadioSearch !== liveRadioSearch ? 'loading' : 'idle'}
+              open={liveRadioComboboxOpen}
+              onOpenChange={setLiveRadioComboboxOpen}
+              onSearchChange={setLiveRadioSearch}
+              onSelect={(stationId) => {
+                setLiveRadioStationId(stationId);
+                rememberRecentStation(stationId);
+                setLiveRadioSearch('');
+                setLiveRadioComboboxOpen(false);
+              }}
+              className="live-radio-select"
+            />
 
             <button
               type="button"
@@ -732,29 +992,35 @@ function App() {
                     </label>
                   ) : (
                     <>
-                      <label
-                        className="select-field select-field--compact"
-                        htmlFor="alarm-radio-preset"
-                      >
-                        <span className="field-label">Radio internet</span>
-                        <select
-                          id="alarm-radio-preset"
-                          value={alarmRadioPresetId}
-                          onChange={(event) =>
-                            setAlarmRadioPresetId(event.target.value as AlarmRadioPresetId)
-                          }
+                      <div className="select-field select-field--compact">
+                        <StationCombobox
+                          buttonId="alarm-radio-station"
+                          searchId="alarm-radio-search"
+                          label="Station laut.fm"
+                          selectedStation={selectedAlarmRadioStation}
+                          suggestions={alarmRadioSuggestions}
+                          recentStations={alarmRadioRecentStations}
+                          searchValue={alarmRadioSearch}
+                          searchState={alarmRadioSearchState}
                           disabled={!alarmEnabled}
-                        >
-                          {RADIO_PRESETS.map((preset) => (
-                            <option key={preset.id} value={preset.id}>
-                              {preset.name} · {preset.style}
-                            </option>
-                          ))}
-                        </select>
+                          open={alarmRadioComboboxOpen}
+                          onOpenChange={setAlarmRadioComboboxOpen}
+                          onSearchChange={setAlarmRadioSearch}
+                          onSelect={(stationId) => {
+                            setAlarmRadioStationId(stationId);
+                            rememberRecentStation(stationId);
+                            setAlarmRadioSearch('');
+                            setAlarmRadioComboboxOpen(false);
+                          }}
+                        />
                         <span className="field-hint">
-                          Flux selectionne : {selectedRadioPreset.url}
+                          {alarmRadioSearchState === 'loading'
+                            ? 'Recherche laut.fm en cours...'
+                            : alarmRadioSearchState === 'error'
+                              ? 'Recherche indisponible, stations par defaut affichees.'
+                              : `Flux selectionne : ${selectedAlarmRadioStation.url}`}
                         </span>
-                      </label>
+                      </div>
 
                       <label
                         className="select-field select-field--compact"
@@ -773,7 +1039,8 @@ function App() {
                         />
                         <span className="field-hint">
                           Cette ligne permet de saisir un flux personnalise a la place
-                          d&apos;une radio predefinie.
+                          d&apos;une station laut.fm. Laisse vide pour utiliser la station
+                          selectionnee.
                         </span>
                       </label>
                     </>

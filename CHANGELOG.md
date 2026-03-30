@@ -5,13 +5,21 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+
+## [1.0.3] - 2026-03-30
+
+### Modifie
+ 
+- Changement de source de radio -> Laut.fm
+- modification de selecteur de radio
+
+
 ## [1.0.1] - 2026-03-30
 
 ### Modifie
  
 - La mini horloge uniquement est grisée si l'alarme est désactivée. 
 
----
 
 ## [1.0.0] - 2026-03-30
 
