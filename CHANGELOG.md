@@ -5,6 +5,16 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.8] - 2026-03-30
+
+### Ajouté
+
+ - Icone pour tout les OS
+ - Fusion des boutons play & pause
+ - bouton eject = choisir musique local ou radio @
+ - boutons precedent / suivant uniquement en mode musique locale
+ - Bulles infos sur les boutons de navigation audio 
+
 ## [1.0.7] - 2026-03-30
 
 ### Ajouté

@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type InputHTMLAttributes,
 } from 'react';
 import { AppShell } from './components/AppShell';
 import { AnalogClockCard } from './features/clocks/components/AnalogClockCard';
@@ -20,6 +21,8 @@ import packageJson from '../package.json';
 import './styles/app.css';
 
 type AlarmSource = 'file' | 'radio';
+type LiveAudioSource = 'radio' | 'directory';
+type LiveDirectoryPlaybackMode = 'normal' | 'repeat' | 'shuffle';
 
 type LautFmStation = {
   id: string;
@@ -85,6 +88,9 @@ const DEFAULT_LAUT_FM_STATIONS: LautFmStation[] = [
 const ALARM_SETTINGS_STORAGE_KEY = 'clocklm.alarm-settings';
 const APP_SIGNATURE = `Clocklm v${packageJson.version}`;
 const APP_REPOSITORY_URL = 'https://github.com/mrklm/clocklm';
+const DIRECTORY_INPUT_ATTRIBUTES = {
+  webkitdirectory: '',
+} as unknown as InputHTMLAttributes<HTMLInputElement>;
 
 function renderActiveDisplay(
   display: ClockDisplayDefinition,
@@ -296,6 +302,32 @@ function supportsLautFmCurrentSong(station: LautFmStation) {
   return station.provider !== 'custom';
 }
 
+function getNextLiveDirectoryPlaybackMode(
+  currentMode: LiveDirectoryPlaybackMode,
+): LiveDirectoryPlaybackMode {
+  if (currentMode === 'normal') {
+    return 'repeat';
+  }
+
+  if (currentMode === 'repeat') {
+    return 'shuffle';
+  }
+
+  return 'normal';
+}
+
+function getLiveDirectoryPlaybackModeLabel(mode: LiveDirectoryPlaybackMode) {
+  if (mode === 'normal') {
+    return 'Lecture normale';
+  }
+
+  if (mode === 'repeat') {
+    return 'Lecture en boucle';
+  }
+
+  return 'Lecture aleatoire';
+}
+
 function findStationById(stations: LautFmStation[], stationId: string) {
   return stations.find((station) => station.id === stationId) ?? null;
 }
@@ -492,6 +524,8 @@ function readStoredAlarmSettings() {
       alarmVisualEnabled?: boolean;
       alarmVisualColor?: string;
       recentRadioStationIds?: string[];
+      liveAudioSource?: LiveAudioSource;
+      liveRadioStationId?: string;
     };
   } catch {
     return null;
@@ -530,13 +564,21 @@ function App() {
   >('idle');
   const [alarmStatusMessage, setAlarmStatusMessage] = useState('');
   const [liveRadioStationId, setLiveRadioStationId] = useState(
-    DEFAULT_LAUT_FM_STATIONS[0].id,
+    storedAlarmSettings?.liveRadioStationId ?? DEFAULT_LAUT_FM_STATIONS[0].id,
+  );
+  const [liveAudioSource, setLiveAudioSource] = useState<LiveAudioSource>(
+    storedAlarmSettings?.liveAudioSource ?? 'radio',
   );
   const [liveRadioPlaybackState, setLiveRadioPlaybackState] = useState<
     'idle' | 'playing' | 'paused' | 'error'
   >('idle');
   const [liveRadioCurrentSong, setLiveRadioCurrentSong] =
     useState<LautFmCurrentSong | null>(null);
+  const [liveDirectoryFiles, setLiveDirectoryFiles] = useState<File[]>([]);
+  const [liveDirectoryName, setLiveDirectoryName] = useState('');
+  const [liveDirectoryTrackLabel, setLiveDirectoryTrackLabel] = useState('');
+  const [liveDirectoryPlaybackMode, setLiveDirectoryPlaybackMode] =
+    useState<LiveDirectoryPlaybackMode>('normal');
   const [alarmRadioSearch, setAlarmRadioSearch] = useState('');
   const [liveRadioSearch, setLiveRadioSearch] = useState('');
   const [alarmRadioStations, setAlarmRadioStations] = useState(DEFAULT_LAUT_FM_STATIONS);
@@ -554,6 +596,10 @@ function App() {
   const alarmObjectUrlRef = useRef<string | null>(null);
   const lastTriggeredAlarmMinuteRef = useRef<string | null>(null);
   const liveRadioAudioRef = useRef<HTMLAudioElement | null>(null);
+  const liveDirectoryInputRef = useRef<HTMLInputElement | null>(null);
+  const liveDirectoryObjectUrlsRef = useRef<string[]>([]);
+  const liveDirectoryTrackIndexRef = useRef(0);
+  const liveDirectoryPlaybackModeRef = useRef<LiveDirectoryPlaybackMode>('normal');
   const deferredAlarmRadioSearch = useDeferredValue(alarmRadioSearch);
   const deferredLiveRadioSearch = useDeferredValue(liveRadioSearch);
 
@@ -610,6 +656,13 @@ function App() {
   );
   const effectiveRadioUrl = alarmRadioUrl.trim() || selectedAlarmRadioStation.url;
   const liveRadioCurrentSongLabel = formatStationCurrentSong(liveRadioCurrentSong);
+  const liveTransportTitle =
+    liveAudioSource === 'radio'
+      ? selectedLiveRadioStation.name
+      : liveDirectoryTrackLabel || liveDirectoryName || 'Aucun dossier audio selectionne';
+  const nextLiveDirectoryPlaybackMode = getNextLiveDirectoryPlaybackMode(
+    liveDirectoryPlaybackMode,
+  );
   const themeFamily = getThemeFamily(activeThemeName);
   const themeStyle = {
     '--theme-bg': activeTheme.BG,
@@ -641,12 +694,57 @@ function App() {
   const stopLiveRadioPlayback = () => {
     const activeAudio = liveRadioAudioRef.current;
     if (activeAudio) {
+      activeAudio.onended = null;
       activeAudio.pause();
       activeAudio.src = '';
       liveRadioAudioRef.current = null;
     }
 
     setLiveRadioPlaybackState('idle');
+  };
+
+  const getNextDirectoryTrackIndex = (
+    currentIndex: number,
+    direction: 'next' | 'previous',
+    mode: LiveDirectoryPlaybackMode,
+  ) => {
+    const trackCount = liveDirectoryFiles.length;
+    if (trackCount === 0) {
+      return null;
+    }
+
+    if (mode === 'shuffle') {
+      if (trackCount === 1) {
+        return 0;
+      }
+
+      let nextIndex = currentIndex;
+      while (nextIndex === currentIndex) {
+        nextIndex = Math.floor(Math.random() * trackCount);
+      }
+      return nextIndex;
+    }
+
+    if (direction === 'previous') {
+      if (currentIndex > 0) {
+        return currentIndex - 1;
+      }
+      return mode === 'repeat' ? trackCount - 1 : 0;
+    }
+
+    if (currentIndex < trackCount - 1) {
+      return currentIndex + 1;
+    }
+
+    return mode === 'repeat' ? 0 : null;
+  };
+
+  const clearLiveDirectoryObjectUrls = () => {
+    liveDirectoryObjectUrlsRef.current.forEach((objectUrl) => {
+      URL.revokeObjectURL(objectUrl);
+    });
+    liveDirectoryObjectUrlsRef.current = [];
+    liveDirectoryTrackIndexRef.current = 0;
   };
 
   const startAlarmPlayback = async (triggerLabel: string) => {
@@ -706,6 +804,21 @@ function App() {
   };
 
   const startLiveRadioPlayback = async () => {
+    if (
+      liveRadioPlaybackState === 'paused' &&
+      liveRadioAudioRef.current &&
+      liveAudioSource === 'radio'
+    ) {
+      try {
+        await liveRadioAudioRef.current.play();
+        setLiveRadioPlaybackState('playing');
+      } catch {
+        stopLiveRadioPlayback();
+        setLiveRadioPlaybackState('error');
+      }
+      return;
+    }
+
     stopLiveRadioPlayback();
     stopAlarmPlayback();
 
@@ -722,6 +835,71 @@ function App() {
     }
   };
 
+  const playLiveDirectoryTrack = async (trackIndex = 0) => {
+    if (liveDirectoryFiles.length === 0) {
+      setLiveRadioPlaybackState('error');
+      return;
+    }
+
+    if (
+      liveRadioPlaybackState === 'paused' &&
+      liveRadioAudioRef.current &&
+      liveAudioSource === 'directory' &&
+      trackIndex === liveDirectoryTrackIndexRef.current
+    ) {
+      try {
+        await liveRadioAudioRef.current.play();
+        setLiveRadioPlaybackState('playing');
+      } catch {
+        stopLiveRadioPlayback();
+        setLiveRadioPlaybackState('error');
+      }
+      return;
+    }
+
+    stopLiveRadioPlayback();
+    stopAlarmPlayback();
+
+    try {
+      const objectUrl =
+        liveDirectoryObjectUrlsRef.current[trackIndex] ??
+        URL.createObjectURL(liveDirectoryFiles[trackIndex]);
+      liveDirectoryObjectUrlsRef.current[trackIndex] = objectUrl;
+      liveDirectoryTrackIndexRef.current = trackIndex;
+
+      const audio = new Audio(objectUrl);
+      audio.preload = 'auto';
+      audio.onended = () => {
+        const nextIndex = getNextDirectoryTrackIndex(
+          trackIndex,
+          'next',
+          liveDirectoryPlaybackModeRef.current,
+        );
+        if (nextIndex === null) {
+          stopLiveRadioPlayback();
+          return;
+        }
+        void playLiveDirectoryTrack(nextIndex);
+      };
+      liveRadioAudioRef.current = audio;
+      setLiveDirectoryTrackLabel(liveDirectoryFiles[trackIndex]?.name ?? liveDirectoryName);
+      await audio.play();
+      setLiveRadioPlaybackState('playing');
+    } catch {
+      stopLiveRadioPlayback();
+      setLiveRadioPlaybackState('error');
+    }
+  };
+
+  const startLivePlayback = async () => {
+    if (liveAudioSource === 'directory') {
+      await playLiveDirectoryTrack(liveDirectoryTrackIndexRef.current);
+      return;
+    }
+
+    await startLiveRadioPlayback();
+  };
+
   const pauseLiveRadioPlayback = () => {
     const activeAudio = liveRadioAudioRef.current;
     if (!activeAudio) {
@@ -731,6 +909,85 @@ function App() {
     activeAudio.pause();
     setLiveRadioPlaybackState('paused');
   };
+
+  const handleLiveDirectorySelection = (files: FileList | null) => {
+    clearLiveDirectoryObjectUrls();
+    stopLiveRadioPlayback();
+
+    const selectedFiles = Array.from(files ?? []).filter((file) =>
+      file.type.startsWith('audio/'),
+    );
+
+    setLiveDirectoryFiles(selectedFiles);
+    setLiveDirectoryTrackLabel('');
+
+    if (selectedFiles.length === 0) {
+      setLiveDirectoryName('');
+      return;
+    }
+
+    const firstFile = selectedFiles[0];
+    const relativePath =
+      'webkitRelativePath' in firstFile ? firstFile.webkitRelativePath : '';
+    const [directoryName] = relativePath.split('/');
+    setLiveDirectoryName(directoryName || 'Musique disque dur');
+  };
+
+  const handleBrowseLiveAudio = () => {
+    if (liveAudioSource === 'directory') {
+      liveDirectoryInputRef.current?.click();
+      return;
+    }
+
+    setLiveRadioComboboxOpen((currentOpen) => !currentOpen);
+  };
+
+  const playPreviousLiveDirectoryTrack = () => {
+    const previousIndex = getNextDirectoryTrackIndex(
+      liveDirectoryTrackIndexRef.current,
+      'previous',
+      liveDirectoryPlaybackMode,
+    );
+
+    if (previousIndex === null) {
+      return;
+    }
+
+    void playLiveDirectoryTrack(previousIndex);
+  };
+
+  const playNextLiveDirectoryTrack = () => {
+    const nextIndex = getNextDirectoryTrackIndex(
+      liveDirectoryTrackIndexRef.current,
+      'next',
+      liveDirectoryPlaybackMode,
+    );
+
+    if (nextIndex === null) {
+      stopLiveRadioPlayback();
+      return;
+    }
+
+    void playLiveDirectoryTrack(nextIndex);
+  };
+
+  const cycleLiveDirectoryPlaybackMode = () => {
+    setLiveDirectoryPlaybackMode((currentMode) => {
+      if (currentMode === 'normal') {
+        return 'repeat';
+      }
+
+      if (currentMode === 'repeat') {
+        return 'shuffle';
+      }
+
+      return 'normal';
+    });
+  };
+
+  useEffect(() => {
+    liveDirectoryPlaybackModeRef.current = liveDirectoryPlaybackMode;
+  }, [liveDirectoryPlaybackMode]);
 
   const rememberRecentStation = (stationId: string) => {
     setRecentRadioStationIds((currentIds) => [stationId, ...currentIds.filter((id) => id !== stationId)].slice(0, 10));
@@ -756,6 +1013,8 @@ function App() {
         alarmVisualEnabled,
         alarmVisualColor,
         recentRadioStationIds,
+        liveAudioSource,
+        liveRadioStationId,
       }),
     );
   }, [
@@ -768,6 +1027,8 @@ function App() {
     alarmVisualEnabled,
     alarmVisualColor,
     recentRadioStationIds,
+    liveAudioSource,
+    liveRadioStationId,
   ]);
 
   useEffect(() => {
@@ -799,15 +1060,15 @@ function App() {
   }, [alarmPlaybackState]);
 
   useEffect(() => {
-    if (liveRadioPlaybackState !== 'playing') {
+    if (liveAudioSource !== 'radio' || liveRadioPlaybackState !== 'playing') {
       return;
     }
 
     void startLiveRadioPlayback();
-  }, [liveRadioStationId]);
+  }, [liveAudioSource, liveRadioStationId]);
 
   useEffect(() => {
-    if (!supportsLautFmCurrentSong(selectedLiveRadioStation)) {
+    if (liveAudioSource !== 'radio' || !supportsLautFmCurrentSong(selectedLiveRadioStation)) {
       setLiveRadioCurrentSong(null);
       return;
     }
@@ -841,7 +1102,13 @@ function App() {
         window.clearInterval(refreshTimer);
       }
     };
-  }, [selectedLiveRadioStation.id]);
+  }, [liveAudioSource, selectedLiveRadioStation.id]);
+
+  useEffect(() => {
+    return () => {
+      clearLiveDirectoryObjectUrls();
+    };
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -948,45 +1215,161 @@ function App() {
           data-display-id={activeDisplayId}
         >
           <div className="live-radio-controls">
-            <StationCombobox
-              buttonId="live-radio-select"
-              searchId="live-radio-search"
-              selectedStation={selectedLiveRadioStation}
-              suggestions={liveRadioSuggestions}
-              recentStations={liveRadioRecentStations}
-              searchValue={liveRadioSearch}
-              searchState={deferredLiveRadioSearch !== liveRadioSearch ? 'loading' : 'idle'}
-              currentSongLabel={liveRadioCurrentSongLabel}
-              open={liveRadioComboboxOpen}
-              onOpenChange={setLiveRadioComboboxOpen}
-              onSearchChange={setLiveRadioSearch}
-              onSelect={(stationId) => {
-                setLiveRadioStationId(stationId);
-                rememberRecentStation(stationId);
-                setLiveRadioSearch('');
-                setLiveRadioComboboxOpen(false);
-              }}
-              className="live-radio-select"
-            />
+            {liveAudioSource === 'radio' ? (
+              <StationCombobox
+                buttonId="live-radio-select"
+                searchId="live-radio-search"
+                selectedStation={selectedLiveRadioStation}
+                suggestions={liveRadioSuggestions}
+                recentStations={liveRadioRecentStations}
+                searchValue={liveRadioSearch}
+                searchState={deferredLiveRadioSearch !== liveRadioSearch ? 'loading' : 'idle'}
+                currentSongLabel={liveRadioCurrentSongLabel}
+                open={liveRadioComboboxOpen}
+                onOpenChange={setLiveRadioComboboxOpen}
+                onSearchChange={setLiveRadioSearch}
+                onSelect={(stationId) => {
+                  setLiveRadioStationId(stationId);
+                  rememberRecentStation(stationId);
+                  setLiveRadioSearch('');
+                  setLiveRadioComboboxOpen(false);
+                }}
+                className="live-radio-select"
+              />
+            ) : (
+              <div className="live-audio-summary">
+                <span>{liveDirectoryName || 'Musique disque dur'}</span>
+                <span>{liveTransportTitle}</span>
+              </div>
+            )}
 
-            <button
-              type="button"
-              className="transport-button"
-              aria-label="Lire la radio"
-              onClick={() => void startLiveRadioPlayback()}
-            >
-              ▶
-            </button>
+            <div className="transport-controls">
+              <button
+                type="button"
+                className="transport-button transport-button--browse"
+                aria-label={
+                  liveAudioSource === 'directory'
+                    ? 'Parcourir un dossier audio'
+                    : 'Choisir une radio'
+                }
+                title={
+                  liveAudioSource === 'directory'
+                    ? 'Parcourir un dossier audio'
+                    : 'Choisir une radio'
+                }
+                onClick={handleBrowseLiveAudio}
+              >
+                <span className="transport-button-browse-icon" aria-hidden="true">
+                  <span className="transport-button-browse-triangle" />
+                  <span className="transport-button-browse-bar" />
+                </span>
+              </button>
 
-            <button
-              type="button"
-              className="transport-button transport-button--pause"
-              aria-label="Mettre la radio en pause"
-              onClick={pauseLiveRadioPlayback}
-              disabled={liveRadioPlaybackState !== 'playing'}
-            >
-              ❚❚
-            </button>
+              <button
+                type="button"
+                className="transport-button transport-button--toggle"
+                aria-label={
+                  liveRadioPlaybackState === 'playing'
+                    ? 'Mettre la lecture en pause'
+                    : 'Lire la selection'
+                }
+                title={
+                  liveRadioPlaybackState === 'playing'
+                    ? 'Mettre la lecture en pause'
+                    : 'Lire la selection'
+                }
+                onClick={() => {
+                  if (liveRadioPlaybackState === 'playing') {
+                    pauseLiveRadioPlayback();
+                    return;
+                  }
+
+                  void startLivePlayback();
+                }}
+              >
+                <span
+                  className={`transport-button-icon${
+                    liveRadioPlaybackState === 'playing' ? '' : ' transport-button-icon--active'
+                  }`}
+                  aria-hidden="true"
+                >
+                  ▶
+                </span>
+                <span
+                  className={`transport-button-icon${
+                    liveRadioPlaybackState === 'playing'
+                      ? ' transport-button-icon--active'
+                      : ''
+                  }`}
+                  aria-hidden="true"
+                >
+                  ❚❚
+                </span>
+              </button>
+
+              {liveAudioSource === 'directory' ? (
+                <>
+                  <button
+                    type="button"
+                    className="transport-button transport-button--secondary"
+                    aria-label="Piste precedente"
+                    title="Piste precedente"
+                    onClick={playPreviousLiveDirectoryTrack}
+                    disabled={liveDirectoryFiles.length === 0}
+                  >
+                    ⏮
+                  </button>
+
+                  <button
+                    type="button"
+                    className="transport-button transport-button--secondary"
+                    aria-label="Piste suivante"
+                    title="Piste suivante"
+                    onClick={playNextLiveDirectoryTrack}
+                    disabled={liveDirectoryFiles.length === 0}
+                  >
+                    ⏭
+                  </button>
+
+                  <button
+                    type="button"
+                    className="transport-button transport-button--stop"
+                    aria-label="Arreter la lecture"
+                    title="Arreter la lecture"
+                    onClick={stopLiveRadioPlayback}
+                    disabled={liveRadioPlaybackState === 'idle'}
+                  >
+                    ■
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`transport-button transport-button--mode transport-button--mode-${liveDirectoryPlaybackMode}`}
+                    aria-label="Changer le mode de lecture"
+                    title={`Passer a : ${getLiveDirectoryPlaybackModeLabel(nextLiveDirectoryPlaybackMode)}`}
+                    onClick={cycleLiveDirectoryPlaybackMode}
+                    disabled={liveDirectoryFiles.length === 0}
+                  >
+                    {liveDirectoryPlaybackMode === 'normal'
+                      ? '➜'
+                      : liveDirectoryPlaybackMode === 'repeat'
+                        ? '↻'
+                        : '⇄'}
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="transport-button transport-button--stop"
+                  aria-label="Arreter la lecture"
+                  title="Arreter la lecture"
+                  onClick={stopLiveRadioPlayback}
+                  disabled={liveRadioPlaybackState === 'idle'}
+                >
+                  ■
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="top-controls">
@@ -1031,6 +1414,75 @@ function App() {
                     ))}
                   </select>
                 </label>
+
+                <section className="options-section" aria-labelledby="music-settings-title">
+                  <div className="section-heading">
+                    <p className="section-kicker">Musique</p>
+                    <h3 id="music-settings-title">Lecture principale</h3>
+                  </div>
+
+                  <label className="select-field select-field--compact" htmlFor="live-audio-source-select">
+                    <span className="field-label">Source</span>
+                    <select
+                      id="live-audio-source-select"
+                      value={liveAudioSource}
+                      onChange={(event) => {
+                        const nextSource = event.target.value as LiveAudioSource;
+                        stopLiveRadioPlayback();
+                        setLiveAudioSource(nextSource);
+                        setLiveRadioCurrentSong(null);
+                      }}
+                    >
+                      <option value="radio">Radio @</option>
+                      <option value="directory">Musique disque dur</option>
+                    </select>
+                  </label>
+
+                  {liveAudioSource === 'radio' ? (
+                    <div className="select-field select-field--compact">
+                      <StationCombobox
+                        buttonId="options-live-radio-select"
+                        searchId="options-live-radio-search"
+                        label="Station"
+                        selectedStation={selectedLiveRadioStation}
+                        suggestions={liveRadioSuggestions}
+                        recentStations={liveRadioRecentStations}
+                        searchValue={liveRadioSearch}
+                        searchState={deferredLiveRadioSearch !== liveRadioSearch ? 'loading' : 'idle'}
+                        currentSongLabel={liveRadioCurrentSongLabel}
+                        open={liveRadioComboboxOpen}
+                        onOpenChange={setLiveRadioComboboxOpen}
+                        onSearchChange={setLiveRadioSearch}
+                        onSelect={(stationId) => {
+                          setLiveRadioStationId(stationId);
+                          rememberRecentStation(stationId);
+                          setLiveRadioSearch('');
+                          setLiveRadioComboboxOpen(false);
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <label className="select-field select-field--compact" htmlFor="live-audio-directory">
+                      <span className="field-label">Repertoire audio</span>
+                      <input
+                        ref={liveDirectoryInputRef}
+                        id="live-audio-directory"
+                        className="text-field-input text-field-input--file"
+                        type="file"
+                        accept="audio/*"
+                        multiple
+                        disabled={false}
+                        onChange={(event) => handleLiveDirectorySelection(event.target.files)}
+                        {...DIRECTORY_INPUT_ATTRIBUTES}
+                      />
+                      <span className="field-hint">
+                        {liveDirectoryFiles.length > 0
+                          ? `${liveDirectoryFiles.length} fichier(s) audio dans ${liveDirectoryName || 'le dossier selectionne'}.`
+                          : 'Clique sur Parcourir puis choisis un dossier contenant tes musiques.'}
+                      </span>
+                    </label>
+                  )}
+                </section>
 
                 <section className="options-section" aria-labelledby="alarm-settings-title">
                   <div className="section-heading">
