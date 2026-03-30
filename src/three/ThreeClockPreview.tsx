@@ -532,8 +532,8 @@ export function ThreeClockPreview({
     applyMiniClockPalette(alarmMiniClock, getMiniClockPalette(theme, alarmEnabled));
 
     const clippingPlanes = createCircularClippingPlanes(0.31, -0.24, 0.152);
-    const overlayFill = alarmEnabled ? theme.ACCENT : '#9a9a9a';
-    const overlayOutline = alarmEnabled ? theme.BG : '#2d2d2d';
+    const overlayFill = theme.ACCENT;
+    const overlayOutline = theme.BG;
 
     const overlayHourHand = createOverlayHand(
       0.043,

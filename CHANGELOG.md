@@ -4,9 +4,14 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
-## [Unreleased]
 
-Pas de changement documente pour le moment.
+## [1.0.1] - 2026-03-30
+
+### Modifie
+ 
+- La mini horloge uniquement est grisée si l'alarme est désactivée. 
+
+---
 
 ## [1.0.0] - 2026-03-30
 
