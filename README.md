@@ -1,6 +1,15 @@
 # Clocklm
 
-Base de projet pour une application en TypeScript + React + Three.js + Vite.
+Application d'horloge et d'alarme en TypeScript + React + Three.js, avec emballage desktop via Tauri.
+
+## Telechargements
+
+Les builds desktop sont publies automatiquement a chaque tag de version.
+
+- Ubuntu `.deb` : [telecharger la derniere version](../../releases/latest/download/Clocklm_linux.deb)
+- Windows `.msi` : [telecharger la derniere version](../../releases/latest/download/Clocklm_windows.msi)
+- macOS `.dmg` : [telecharger la derniere version](../../releases/latest/download/Clocklm_macos.dmg)
+- Toutes les versions : [page Releases](../../releases/latest)
 
 ## Objectifs initiaux
 
@@ -24,3 +33,35 @@ Base de projet pour une application en TypeScript + React + Three.js + Vite.
 npm install
 npm run dev
 ```
+
+## Desktop Tauri
+
+Le projet embarque maintenant une couche desktop Tauri dans `src-tauri/`.
+
+Commandes utiles :
+
+```bash
+npm run tauri:dev
+npm run tauri:build
+```
+
+## Releases automatiques
+
+Le workflow `.github/workflows/tauri-release.yml` publie automatiquement les builds desktop sur GitHub Releases a chaque push de tag `v*.*.*` ou `*.*.*`.
+
+Plateformes construites :
+
+- Ubuntu
+- Windows
+- macOS
+
+Formats publies :
+
+- Ubuntu : `.deb`
+- Windows : `.msi`
+- macOS : `.dmg`
+
+## Notes
+
+- Le fichier `src-tauri/tauri.conf.json` utilise l'identifiant d'application `com.clocklm.app`.
+- Pour une distribution macOS propre hors usage personnel, il faudra ajouter signature et notarisation Apple plus tard.

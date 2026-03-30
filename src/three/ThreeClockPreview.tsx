@@ -19,6 +19,7 @@ import {
   Vector3,
   WebGLRenderer,
   BoxGeometry,
+  LinearFilter,
 } from 'three';
 import type { ThemePalette } from '../types/theme';
 
@@ -35,6 +36,10 @@ function drawTextSprite(
   value: string | string[],
   color: string,
   font: string,
+  options?: {
+    outlineColor?: string;
+    outlineWidth?: number;
+  },
 ) {
   const context = canvas.getContext('2d');
 
@@ -51,11 +56,19 @@ function drawTextSprite(
   const lines = Array.isArray(value) ? value : [value];
   const fontSizeMatch = font.match(/(\d+)px/);
   const fontSize = fontSizeMatch ? Number(fontSizeMatch[1]) : 32;
-  const lineHeight = fontSize * 1.1;
+  const lineHeight = fontSize * 1.02;
   const startY = canvas.height / 2 - ((lines.length - 1) * lineHeight) / 2;
 
   lines.forEach((line, index) => {
-    context.fillText(line, canvas.width / 2, startY + index * lineHeight);
+    const y = startY + index * lineHeight;
+    if (options?.outlineColor && options.outlineWidth) {
+      context.strokeStyle = options.outlineColor;
+      context.lineWidth = options.outlineWidth;
+      context.lineJoin = 'round';
+      context.miterLimit = 2;
+      context.strokeText(line, canvas.width / 2, y);
+    }
+    context.fillText(line, canvas.width / 2, y);
   });
   return true;
 }
@@ -186,7 +199,7 @@ function isHandCrossingDateZone(turnFraction: number, handLength: number) {
   );
 }
 
-function getDateTextColor(theme: ThemePalette, currentTime: Date) {
+function getDateTextColor(_theme: ThemePalette, currentTime: Date) {
   const hours = currentTime.getHours() % 12;
   const minutes = currentTime.getMinutes();
   const seconds = currentTime.getSeconds();
@@ -201,7 +214,7 @@ function getDateTextColor(theme: ThemePalette, currentTime: Date) {
     isHandCrossingDateZone(minutesProgress, 0.76) ||
     isHandCrossingDateZone(secondsProgress, 0.82);
 
-  return isOverlapping ? theme.BG : '#ffffff';
+  return isOverlapping ? '#ffffff' : '#ffffff';
 }
 
 function getMiniClockPalette(
@@ -235,25 +248,33 @@ function applyMiniClockPalette(miniClock: AlarmMiniClock, palette: ReturnType<ty
   });
 }
 
-function createDateSprite(currentTime: Date, color: string) {
+function createDateSprite(currentTime: Date, color: string, outlineColor: string) {
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 192;
+  canvas.width = 1024;
+  canvas.height = 448;
 
   const value = formatDateLabel(currentTime);
-  if (!drawTextSprite(canvas, value, color, '700 34px "Segoe UI", sans-serif')) {
+  if (
+    !drawTextSprite(canvas, value, color, '700 84px "Segoe UI", sans-serif', {
+      outlineColor,
+      outlineWidth: 8,
+    })
+  ) {
     return null;
   }
 
   const texture = new CanvasTexture(canvas);
+  texture.generateMipmaps = false;
+  texture.minFilter = LinearFilter;
+  texture.magFilter = LinearFilter;
   const material = new SpriteMaterial({
     map: texture,
     transparent: true,
   });
 
   const sprite = new Sprite(material);
-  sprite.scale.set(0.7, 0.42, 1);
-  sprite.position.set(0, 0.34, 0.05);
+  sprite.scale.set(0.82, 0.5, 1);
+  sprite.position.set(0, 0.32, 0.05);
   return sprite;
 }
 
@@ -431,7 +452,11 @@ function createClockScene(
     }
   });
 
-  const dateSprite = createDateSprite(currentTime, getDateTextColor(theme, currentTime));
+  const dateSprite = createDateSprite(
+    currentTime,
+    getDateTextColor(theme, currentTime),
+    theme.ACCENT,
+  );
   const { group: alarmMiniClockGroup, miniClock } = createAlarmMiniClock(
     theme,
     alarmTime,
@@ -638,7 +663,11 @@ export function ThreeClockPreview({
       material.map.image,
       formatDateLabel(currentTime),
       getDateTextColor(theme, currentTime),
-      '700 34px "Segoe UI", sans-serif',
+      '700 84px "Segoe UI", sans-serif',
+      {
+        outlineColor: theme.ACCENT,
+        outlineWidth: 8,
+      },
     );
     material.map.needsUpdate = true;
   }, [currentTime, theme]);
