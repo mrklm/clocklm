@@ -5,6 +5,17 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+
+## [1.0.13] - 2026-03-31
+
+### Modifié
+
+ - Refonte de la fenêtre options
+ - Refonte de la fenêtre alarmes
+ - Possibilité de mettre en place 5 alarmes
+ - Combobox de choix de frequence de l'alarme
+ - Couleurs parametrables pour chaque alarme 
+
 ## [1.0.12] - 2026-03-31
 
 ### Ajouté

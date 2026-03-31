@@ -18,13 +18,23 @@ import { DEFAULT_THEME_NAME, THEMES } from './themes/themes';
 import type { ClockDisplayDefinition, ClockDisplayId } from './types/clock';
 import type { ThemePalette } from './types/theme';
 import clocklmIconUrl from '../assets/clocklm.png';
-import defaultAlarmSoundUrl from '../assets/alarm.mp3';
 import packageJson from '../package.json';
 import './styles/app.css';
 
-type AlarmSource = 'file' | 'radio';
 type LiveAudioSource = 'radio' | 'directory';
 type LiveDirectoryPlaybackMode = 'normal' | 'repeat' | 'shuffle';
+type OptionsTabId = 'appearance' | 'music' | 'alarms';
+type AlarmMode = 'visual' | 'radio' | 'file';
+type AlarmDefinition = {
+  id: string;
+  time: string;
+  name: string;
+  frequency: 'once' | 'weekdays' | 'daily';
+  color: string;
+  mode: AlarmMode;
+  radioStationId: string;
+  fileName: string;
+};
 
 type LautFmStation = {
   id: string;
@@ -86,6 +96,16 @@ const DEFAULT_LAUT_FM_STATIONS: LautFmStation[] = [
   createLautFmStation('jazzrockfusion', 'Jazz Rock Fusion', 'Jazz fusion / funk'),
   createLautFmStation('natureadio', 'Naturadio', 'Ambient / folk / pop'),
   createLautFmStation('rockmag', 'Rockmag', 'Rock'),
+];
+const ALARM_BADGE_COLOR_PALETTE = [
+  '#ff8a3d',
+  '#ff4f6d',
+  '#ffb703',
+  '#4cc9f0',
+  '#2ec4b6',
+  '#7b61ff',
+  '#8ac926',
+  '#fb5607',
 ];
 const ALARM_SETTINGS_STORAGE_KEY = 'clocklm.alarm-settings';
 const APP_SIGNATURE_FALLBACK = `Clocklm v${packageJson.version}`;
@@ -508,6 +528,82 @@ function StationCombobox({
   );
 }
 
+function createAlarmDefinition(partial?: Partial<AlarmDefinition>): AlarmDefinition {
+  return {
+    id: partial?.id ?? `alarm-${Math.random().toString(36).slice(2, 10)}`,
+    time: partial?.time ?? '07:00',
+    name: partial?.name ?? '',
+    frequency: partial?.frequency ?? 'once',
+    color: partial?.color ?? '#ff8a3d',
+    mode: partial?.mode ?? 'visual',
+    radioStationId: partial?.radioStationId ?? DEFAULT_LAUT_FM_STATIONS[0].id,
+    fileName: partial?.fileName ?? '',
+  };
+}
+
+function getNextAlarmColor(alarms: AlarmDefinition[]) {
+  const usedColors = new Set(alarms.map((alarm) => alarm.color));
+  const availableColors = ALARM_BADGE_COLOR_PALETTE.filter((color) => !usedColors.has(color));
+
+  if (availableColors.length === 0) {
+    return ALARM_BADGE_COLOR_PALETTE[Math.floor(Math.random() * ALARM_BADGE_COLOR_PALETTE.length)];
+  }
+
+  return availableColors[Math.floor(Math.random() * availableColors.length)];
+}
+
+function normalizeStoredAlarms(
+  storedAlarms: unknown,
+  fallbackEnabled: boolean,
+  fallbackTime: string,
+) {
+  if (Array.isArray(storedAlarms)) {
+    const normalized = storedAlarms
+      .map((alarm) => {
+        if (!alarm || typeof alarm !== 'object') {
+          return null;
+        }
+
+        const candidate = alarm as Partial<AlarmDefinition>;
+        if (typeof candidate.time !== 'string' || !candidate.time.trim()) {
+          return null;
+        }
+
+        return createAlarmDefinition({
+          id: typeof candidate.id === 'string' ? candidate.id : undefined,
+          time: candidate.time,
+          name: typeof candidate.name === 'string' ? candidate.name : '',
+          frequency:
+            candidate.frequency === 'weekdays' || candidate.frequency === 'daily'
+              ? candidate.frequency
+              : 'once',
+          color:
+            typeof candidate.color === 'string' && candidate.color.trim()
+              ? candidate.color
+              : '#ff8a3d',
+          mode:
+            candidate.mode === 'radio' || candidate.mode === 'file'
+              ? candidate.mode
+              : 'visual',
+          radioStationId:
+            typeof candidate.radioStationId === 'string' && candidate.radioStationId.trim()
+              ? candidate.radioStationId
+              : DEFAULT_LAUT_FM_STATIONS[0].id,
+          fileName:
+            typeof candidate.fileName === 'string' ? candidate.fileName : '',
+        });
+      })
+      .filter((alarm): alarm is AlarmDefinition => Boolean(alarm))
+      .slice(0, 5);
+
+    if (normalized.length > 0) {
+      return normalized;
+    }
+  }
+
+  return fallbackEnabled ? [createAlarmDefinition({ time: fallbackTime })] : [];
+}
+
 function readStoredAlarmSettings() {
   if (typeof window === 'undefined') {
     return null;
@@ -520,14 +616,9 @@ function readStoredAlarmSettings() {
 
   try {
     return JSON.parse(rawValue) as {
+      alarms?: AlarmDefinition[];
       alarmEnabled?: boolean;
       alarmTime?: string;
-      alarmAudioEnabled?: boolean;
-      alarmSource?: AlarmSource;
-      alarmRadioStationId?: string;
-      alarmRadioUrl?: string;
-      alarmVisualEnabled?: boolean;
-      alarmVisualColor?: string;
       recentRadioStationIds?: string[];
       liveAudioSource?: LiveAudioSource;
       liveRadioStationId?: string;
@@ -537,38 +628,33 @@ function readStoredAlarmSettings() {
   }
 }
 
+function alarmMatchesFrequency(alarm: AlarmDefinition, currentTime: Date) {
+  if (alarm.frequency === 'daily' || alarm.frequency === 'once') {
+    return true;
+  }
+
+  const currentDay = currentTime.getDay();
+  return currentDay >= 1 && currentDay <= 5;
+}
+
 function App() {
   const storedAlarmSettings = readStoredAlarmSettings();
   const [activeDisplayId, setActiveDisplayId] = useState<ClockDisplayId>('analog');
   const [activeThemeName, setActiveThemeName] = useState(DEFAULT_THEME_NAME);
   const [appSignature, setAppSignature] = useState(APP_SIGNATURE_FALLBACK);
-  const [alarmEnabled, setAlarmEnabled] = useState(
-    storedAlarmSettings?.alarmEnabled ?? false,
-  );
-  const [alarmTime, setAlarmTime] = useState(storedAlarmSettings?.alarmTime ?? '07:00');
-  const [alarmAudioEnabled, setAlarmAudioEnabled] = useState(
-    storedAlarmSettings?.alarmAudioEnabled ?? true,
-  );
-  const [alarmSource, setAlarmSource] = useState<AlarmSource>(
-    storedAlarmSettings?.alarmSource ?? 'file',
-  );
-  const [alarmFile, setAlarmFile] = useState<File | null>(null);
-  const [alarmRadioStationId, setAlarmRadioStationId] = useState(
-    storedAlarmSettings?.alarmRadioStationId ?? DEFAULT_LAUT_FM_STATIONS[0].id,
-  );
-  const [alarmRadioUrl, setAlarmRadioUrl] = useState(
-    storedAlarmSettings?.alarmRadioUrl ?? '',
-  );
-  const [alarmVisualEnabled, setAlarmVisualEnabled] = useState(
-    storedAlarmSettings?.alarmVisualEnabled ?? true,
-  );
-  const [alarmVisualColor, setAlarmVisualColor] = useState(
-    storedAlarmSettings?.alarmVisualColor ?? '#ff2a2a',
+  const [alarms, setAlarms] = useState<AlarmDefinition[]>(
+    normalizeStoredAlarms(
+      storedAlarmSettings?.alarms,
+      storedAlarmSettings?.alarmEnabled ?? false,
+      storedAlarmSettings?.alarmTime ?? '07:00',
+    ),
   );
   const [alarmPlaybackState, setAlarmPlaybackState] = useState<
     'idle' | 'ringing' | 'error'
   >('idle');
   const [alarmStatusMessage, setAlarmStatusMessage] = useState('');
+  const [activeAlarmLabel, setActiveAlarmLabel] = useState('');
+  const [activeAlarmColor, setActiveAlarmColor] = useState('#ff2a2a');
   const [liveRadioStationId, setLiveRadioStationId] = useState(
     storedAlarmSettings?.liveRadioStationId ?? DEFAULT_LAUT_FM_STATIONS[0].id,
   );
@@ -585,23 +671,20 @@ function App() {
   const [liveDirectoryTrackLabel, setLiveDirectoryTrackLabel] = useState('');
   const [liveDirectoryPlaybackMode, setLiveDirectoryPlaybackMode] =
     useState<LiveDirectoryPlaybackMode>('normal');
-  const [alarmRadioSearch, setAlarmRadioSearch] = useState('');
   const [liveRadioSearch, setLiveRadioSearch] = useState('');
-  const [alarmRadioStations, setAlarmRadioStations] = useState(DEFAULT_LAUT_FM_STATIONS);
   const [liveRadioStations, setLiveRadioStations] = useState(DEFAULT_LAUT_FM_STATIONS);
   const [recentRadioStationIds, setRecentRadioStationIds] = useState(
     storedAlarmSettings?.recentRadioStationIds ?? [],
   );
-  const [alarmRadioSearchState, setAlarmRadioSearchState] = useState<
-    'idle' | 'loading' | 'error'
-  >('idle');
   const [optionsOpen, setOptionsOpen] = useState(false);
-  const [alarmRadioComboboxOpen, setAlarmRadioComboboxOpen] = useState(false);
+  const [optionsTab, setOptionsTab] = useState<OptionsTabId>('appearance');
   const [liveRadioComboboxOpen, setLiveRadioComboboxOpen] = useState(false);
   const currentTime = useSystemTime();
   const alarmAudioRef = useRef<HTMLAudioElement | null>(null);
   const alarmObjectUrlRef = useRef<string | null>(null);
-  const lastTriggeredAlarmMinuteRef = useRef<string | null>(null);
+  const alarmFileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const alarmFilesRef = useRef<Record<string, File | null>>({});
+  const triggeredAlarmKeysRef = useRef<Set<string>>(new Set());
   const liveRadioAudioRef = useRef<HTMLAudioElement | null>(null);
   const liveDirectoryInputRef = useRef<HTMLInputElement | null>(null);
   const liveDirectoryObjectUrlsRef = useRef<string[]>([]);
@@ -611,8 +694,6 @@ function App() {
   const optionsMenuRef = useRef<HTMLDetailsElement | null>(null);
   const liveRadioStageComboboxRef = useRef<HTMLDetailsElement | null>(null);
   const liveRadioOptionsComboboxRef = useRef<HTMLDetailsElement | null>(null);
-  const alarmRadioComboboxRef = useRef<HTMLDetailsElement | null>(null);
-  const deferredAlarmRadioSearch = useDeferredValue(alarmRadioSearch);
   const deferredLiveRadioSearch = useDeferredValue(liveRadioSearch);
 
   useEffect(() => {
@@ -660,20 +741,13 @@ function App() {
         setLiveRadioComboboxOpen(false);
       }
 
-      if (
-        alarmRadioComboboxOpen
-        && alarmRadioComboboxRef.current
-        && !alarmRadioComboboxRef.current.contains(targetNode)
-      ) {
-        setAlarmRadioComboboxOpen(false);
-      }
     };
 
     window.addEventListener('pointerdown', handlePointerDown);
     return () => {
       window.removeEventListener('pointerdown', handlePointerDown);
     };
-  }, [alarmRadioComboboxOpen, liveRadioComboboxOpen, optionsOpen]);
+  }, [liveRadioComboboxOpen, optionsOpen]);
 
   const activeDisplay = useMemo(
     () =>
@@ -682,10 +756,6 @@ function App() {
     [activeDisplayId],
   );
   const activeTheme = THEMES[activeThemeName] ?? THEMES[DEFAULT_THEME_NAME];
-  const selectedAlarmRadioStation =
-    findStationById(alarmRadioStations, alarmRadioStationId) ??
-    findStationById(DEFAULT_LAUT_FM_STATIONS, alarmRadioStationId) ??
-    DEFAULT_LAUT_FM_STATIONS[0];
   const selectedLiveRadioStation =
     findStationById(liveRadioStations, liveRadioStationId) ??
     findStationById(DEFAULT_LAUT_FM_STATIONS, liveRadioStationId) ??
@@ -699,15 +769,6 @@ function App() {
       ),
     [liveRadioSearch, liveRadioStationId, liveRadioStations],
   );
-  const alarmRadioSuggestions = useMemo(
-    () =>
-      getStationSuggestions(
-        mergeStations(alarmRadioStations, DEFAULT_LAUT_FM_STATIONS),
-        alarmRadioSearch,
-        alarmRadioStationId,
-      ),
-    [alarmRadioSearch, alarmRadioStationId, alarmRadioStations],
-  );
   const liveRadioRecentStations = useMemo(
     () =>
       getRecentStations(
@@ -717,16 +778,7 @@ function App() {
       ),
     [liveRadioStationId, liveRadioStations, recentRadioStationIds],
   );
-  const alarmRadioRecentStations = useMemo(
-    () =>
-      getRecentStations(
-        mergeStations(alarmRadioStations, DEFAULT_LAUT_FM_STATIONS),
-        recentRadioStationIds,
-        alarmRadioStationId,
-      ),
-    [alarmRadioStationId, alarmRadioStations, recentRadioStationIds],
-  );
-  const effectiveRadioUrl = alarmRadioUrl.trim() || selectedAlarmRadioStation.url;
+  const primaryAlarmTime = alarms[0]?.time ?? '07:00';
   const liveRadioCurrentSongLabel = formatStationCurrentSong(liveRadioCurrentSong);
   const liveTransportTitle =
     liveAudioSource === 'radio'
@@ -743,7 +795,7 @@ function App() {
     '--theme-fg': activeTheme.FG,
     '--theme-field-fg': activeTheme.FIELD_FG,
     '--theme-accent': activeTheme.ACCENT,
-    '--alarm-visual-color': alarmVisualColor,
+    '--alarm-visual-color': activeAlarmColor,
   } as CSSProperties;
 
   const stopAlarmPlayback = () => {
@@ -761,6 +813,8 @@ function App() {
 
     setAlarmPlaybackState('idle');
     setAlarmStatusMessage('');
+    setActiveAlarmLabel('');
+    setActiveAlarmColor('#ff2a2a');
   };
 
   const stopLiveRadioPlayback = () => {
@@ -819,11 +873,14 @@ function App() {
     liveDirectoryTrackIndexRef.current = 0;
   };
 
-  const startAlarmPlayback = async (triggerLabel: string) => {
+  const startAlarmPlayback = async (alarm: AlarmDefinition, triggerLabel: string, alarmLabel = '') => {
     stopAlarmPlayback();
     stopLiveRadioPlayback();
 
-    if (!alarmAudioEnabled) {
+    setActiveAlarmLabel(alarmLabel);
+    setActiveAlarmColor(alarm.color);
+
+    if (alarm.mode === 'visual') {
       setAlarmPlaybackState('ringing');
       setAlarmStatusMessage(triggerLabel);
       return;
@@ -832,27 +889,36 @@ function App() {
     let sourceUrl = '';
     let isLooping = false;
 
-    if (alarmSource === 'file') {
-      if (alarmFile) {
-        const objectUrl = URL.createObjectURL(alarmFile);
+    if (alarm.mode === 'file') {
+      const selectedFile = alarmFilesRef.current[alarm.id];
+
+      if (selectedFile) {
+        const objectUrl = URL.createObjectURL(selectedFile);
         alarmObjectUrlRef.current = objectUrl;
         sourceUrl = objectUrl;
       } else {
-        sourceUrl = defaultAlarmSoundUrl;
+        setAlarmPlaybackState('ringing');
+        setAlarmStatusMessage(`${triggerLabel} Aucun fichier local n'est selectionne.`);
+        return;
       }
+
       isLooping = true;
     } else {
-      if (!effectiveRadioUrl) {
-        setAlarmPlaybackState('error');
-        setAlarmStatusMessage('Aucune URL de radio n’est renseignee.');
+      const selectedStation =
+        findStationById(DEFAULT_LAUT_FM_STATIONS, alarm.radioStationId) ??
+        DEFAULT_LAUT_FM_STATIONS[0];
+
+      if (!selectedStation.url) {
+        setAlarmPlaybackState('ringing');
+        setAlarmStatusMessage(`${triggerLabel} Aucune radio n'est selectionnee.`);
         return;
       }
 
       try {
-        sourceUrl = await resolveStreamUrl(effectiveRadioUrl);
+        sourceUrl = await resolveStreamUrl(selectedStation.url);
       } catch {
-        setAlarmPlaybackState('error');
-        setAlarmStatusMessage('Impossible de resoudre le flux radio selectionne.');
+        setAlarmPlaybackState('ringing');
+        setAlarmStatusMessage(`${triggerLabel} Impossible de charger le flux radio.`);
         return;
       }
     }
@@ -868,10 +934,63 @@ function App() {
       setAlarmStatusMessage(triggerLabel);
     } catch {
       stopAlarmPlayback();
-      setAlarmPlaybackState('error');
+      setActiveAlarmLabel(alarmLabel);
+      setActiveAlarmColor(alarm.color);
+      setAlarmPlaybackState('ringing');
       setAlarmStatusMessage(
-        'Lecture bloquee par le navigateur. Interagis avec la page puis relance le test.',
+        'Lecture bloquee par le navigateur. Interagis avec la page puis relance l’alarme.',
       );
+    }
+  };
+
+  const handleAlarmFileSelection = (alarmId: string, files: FileList | null) => {
+    const file = files?.[0] ?? null;
+    alarmFilesRef.current[alarmId] = file;
+
+    updateAlarm(alarmId, {
+      fileName: file?.name ?? '',
+    });
+  };
+
+  const handleAlarmFileBrowse = (alarmId: string) => {
+    alarmFileInputRefs.current[alarmId]?.click();
+  };
+
+  const updateAlarm = (alarmId: string, updates: Partial<AlarmDefinition>) => {
+    setAlarms((currentAlarms) =>
+      currentAlarms.map((alarm) =>
+        alarm.id === alarmId ? { ...alarm, ...updates } : alarm,
+      ),
+    );
+  };
+
+  const addAlarm = () => {
+    setAlarms((currentAlarms) => {
+      if (currentAlarms.length >= 5) {
+        return currentAlarms;
+      }
+
+      return [
+        ...currentAlarms,
+        createAlarmDefinition({ color: getNextAlarmColor(currentAlarms) }),
+      ];
+    });
+  };
+
+  const removeAlarm = (alarmId: string) => {
+    setAlarms((currentAlarms) => currentAlarms.filter((alarm) => alarm.id !== alarmId));
+
+    delete alarmFilesRef.current[alarmId];
+    delete alarmFileInputRefs.current[alarmId];
+
+    triggeredAlarmKeysRef.current.forEach((key) => {
+      if (key.startsWith(`${alarmId}:`)) {
+        triggeredAlarmKeysRef.current.delete(key);
+      }
+    });
+
+    if (activeAlarmLabel && alarmPlaybackState === 'ringing') {
+      stopAlarmPlayback();
     }
   };
 
@@ -1078,38 +1197,24 @@ function App() {
     window.localStorage.setItem(
       ALARM_SETTINGS_STORAGE_KEY,
       JSON.stringify({
-        alarmEnabled,
-        alarmTime,
-        alarmAudioEnabled,
-        alarmSource,
-        alarmRadioStationId,
-        alarmRadioUrl,
-        alarmVisualEnabled,
-        alarmVisualColor,
+        alarms,
         recentRadioStationIds,
         liveAudioSource,
         liveRadioStationId,
       }),
     );
   }, [
-    alarmEnabled,
-    alarmTime,
-    alarmAudioEnabled,
-    alarmSource,
-    alarmRadioStationId,
-    alarmRadioUrl,
-    alarmVisualEnabled,
-    alarmVisualColor,
+    alarms,
     recentRadioStationIds,
     liveAudioSource,
     liveRadioStationId,
   ]);
 
   useEffect(() => {
-    if (!alarmEnabled) {
+    if (alarms.length === 0) {
       stopAlarmPlayback();
     }
-  }, [alarmEnabled]);
+  }, [alarms.length]);
 
   useEffect(() => {
     if (alarmPlaybackState !== 'ringing') {
@@ -1203,43 +1308,6 @@ function App() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const trimmedQuery = deferredAlarmRadioSearch.trim();
-
-    if (!trimmedQuery) {
-      setAlarmRadioStations(
-        mergeStations(
-          DEFAULT_LAUT_FM_STATIONS,
-          selectedAlarmRadioStation ? [selectedAlarmRadioStation] : [],
-        ),
-      );
-      setAlarmRadioSearchState('idle');
-      return () => {
-        controller.abort();
-      };
-    }
-
-    setAlarmRadioSearchState('loading');
-    searchLautFmStations(trimmedQuery, controller.signal)
-      .then((stations) => {
-        setAlarmRadioStations(
-          mergeStations(stations, selectedAlarmRadioStation ? [selectedAlarmRadioStation] : []),
-        );
-        setAlarmRadioSearchState('idle');
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          return;
-        }
-        setAlarmRadioSearchState('error');
-      });
-
-    return () => {
-      controller.abort();
-    };
-  }, [deferredAlarmRadioSearch, selectedAlarmRadioStation]);
-
-  useEffect(() => {
-    const controller = new AbortController();
     const trimmedQuery = deferredLiveRadioSearch.trim();
 
     if (!trimmedQuery) {
@@ -1272,23 +1340,42 @@ function App() {
   }, [deferredLiveRadioSearch, selectedLiveRadioStation]);
 
   useEffect(() => {
-    if (!alarmEnabled) {
+    if (alarms.length === 0) {
       return;
     }
 
     const currentMinute = currentTime.toTimeString().slice(0, 5);
-    if (currentMinute !== alarmTime) {
+    const minuteKey = formatAlarmMinuteKey(currentTime);
+    const activeAlarm = alarms.find((alarm) => {
+      if (alarm.time !== currentMinute || !alarmMatchesFrequency(alarm, currentTime)) {
+        return false;
+      }
+
+      const triggeredKey = `${alarm.id}:${minuteKey}`;
+      if (triggeredAlarmKeysRef.current.has(triggeredKey)) {
+        return false;
+      }
+
+      triggeredAlarmKeysRef.current.add(triggeredKey);
+      return true;
+    });
+
+    if (!activeAlarm) {
       return;
     }
 
-    const alarmMinuteKey = formatAlarmMinuteKey(currentTime);
-    if (lastTriggeredAlarmMinuteRef.current === alarmMinuteKey) {
-      return;
+    if (activeAlarm.frequency === 'once') {
+      setAlarms((currentAlarms) =>
+        currentAlarms.filter((alarm) => alarm.id !== activeAlarm.id),
+      );
     }
 
-    lastTriggeredAlarmMinuteRef.current = alarmMinuteKey;
-    void startAlarmPlayback(`Alarme declenchee a ${alarmTime}.`);
-  }, [alarmEnabled, alarmSource, alarmTime, currentTime, effectiveRadioUrl, alarmFile]);
+    void startAlarmPlayback(
+      activeAlarm,
+      `Alarme declenchee a ${activeAlarm.time}.`,
+      activeAlarm.name.trim() || `Alarme ${alarms.indexOf(activeAlarm) + 1}`,
+    );
+  }, [alarms, currentTime]);
 
   return (
     <AppShell
@@ -1299,12 +1386,18 @@ function App() {
       <section className="clock-layout" data-theme-family={themeFamily}>
         <article
           className={`display-stage-card ${
-            alarmPlaybackState === 'ringing' && alarmVisualEnabled
+            alarmPlaybackState === 'ringing'
               ? 'display-stage-card--alarm'
               : ''
           }`}
           data-display-id={activeDisplayId}
         >
+          {alarmPlaybackState === 'ringing' && activeAlarmLabel ? (
+            <div className="alarm-overlay-label" role="status" aria-live="assertive">
+              {activeAlarmLabel}
+            </div>
+          ) : null}
+
           <div className="live-radio-controls">
             {liveAudioSource === 'radio' ? (
               <StationCombobox
@@ -1483,307 +1576,324 @@ function App() {
               <div className="options-panel">
                 <div className="options-header">
                   <img className="options-header-icon" src={clocklmIconUrl} alt="" />
-                  <div className="options-header-copy">
-                    <p className="options-header-title">Clocklm</p>
-                    <p className="options-header-version">{appSignature}</p>
-                  </div>
+                  <p className="options-header-version">{appSignature}</p>
                 </div>
 
-                <label
-                  className="select-field select-field--compact"
-                  htmlFor="theme-select"
-                >
-                  <span className="field-label">Theme</span>
-                  <select
-                    id="theme-select"
-                    value={activeThemeName}
-                    onChange={(event) => setActiveThemeName(event.target.value)}
+                <div className="options-tabs" role="tablist" aria-label="Sections options">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={optionsTab === 'appearance'}
+                    className={`options-tab${optionsTab === 'appearance' ? ' options-tab--active' : ''}`}
+                    onClick={() => setOptionsTab('appearance')}
                   >
-                    {Object.keys(THEMES).map((themeName) => (
-                      <option key={themeName} value={themeName}>
-                        {themeName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label
-                  className="select-field select-field--compact"
-                  htmlFor="clock-display-select"
-                >
-                  <span className="field-label">Type d&apos;horloge</span>
-                  <select
-                    id="clock-display-select"
-                    value={activeDisplayId}
-                    onChange={(event) =>
-                      setActiveDisplayId(event.target.value as ClockDisplayId)
-                    }
+                    Apparence
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={optionsTab === 'music'}
+                    className={`options-tab${optionsTab === 'music' ? ' options-tab--active' : ''}`}
+                    onClick={() => setOptionsTab('music')}
                   >
-                    {DISPLAY_MODES.map((display) => (
-                      <option key={display.id} value={display.id}>
-                        {display.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    Musique
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={optionsTab === 'alarms'}
+                    className={`options-tab${optionsTab === 'alarms' ? ' options-tab--active' : ''}`}
+                    onClick={() => setOptionsTab('alarms')}
+                  >
+                    Alarmes
+                  </button>
+                </div>
 
-                <section className="options-section" aria-labelledby="music-settings-title">
-                  <div className="section-heading">
-                    <p className="section-kicker">Musique</p>
-                    <h3 id="music-settings-title">Lecture principale</h3>
-                  </div>
-
-                  <label className="select-field select-field--compact" htmlFor="live-audio-source-select">
-                    <span className="field-label">Source</span>
-                    <select
-                      id="live-audio-source-select"
-                      value={liveAudioSource}
-                      onChange={(event) => {
-                        const nextSource = event.target.value as LiveAudioSource;
-                        stopLiveRadioPlayback();
-                        setLiveAudioSource(nextSource);
-                        setLiveRadioCurrentSong(null);
-                      }}
+                {optionsTab === 'appearance' ? (
+                  <section className="options-section">
+                    <label
+                      className="select-field select-field--compact"
+                      htmlFor="theme-select"
                     >
-                      <option value="radio">Radio @</option>
-                      <option value="directory">Musique disque dur</option>
-                    </select>
-                  </label>
-
-                  {liveAudioSource === 'radio' ? (
-                    <div className="select-field select-field--compact">
-                      <StationCombobox
-                        detailsRef={(element) => {
-                          liveRadioOptionsComboboxRef.current = element;
-                        }}
-                        buttonId="options-live-radio-select"
-                        searchId="options-live-radio-search"
-                        label="Station"
-                        selectedStation={selectedLiveRadioStation}
-                        suggestions={liveRadioSuggestions}
-                        recentStations={liveRadioRecentStations}
-                        searchValue={liveRadioSearch}
-                        searchState={deferredLiveRadioSearch !== liveRadioSearch ? 'loading' : 'idle'}
-                        currentSongLabel={liveRadioCurrentSongLabel}
-                        open={liveRadioComboboxOpen}
-                        onOpenChange={setLiveRadioComboboxOpen}
-                        onSearchChange={setLiveRadioSearch}
-                        onSelect={(stationId) => {
-                          pendingLiveAutoplayRef.current = 'radio';
-                          setLiveRadioStationId(stationId);
-                          rememberRecentStation(stationId);
-                          setLiveRadioSearch('');
-                          setLiveRadioComboboxOpen(false);
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <label className="select-field select-field--compact" htmlFor="live-audio-directory">
-                      <span className="field-label">Repertoire audio</span>
-                      <input
-                        ref={liveDirectoryInputRef}
-                        id="live-audio-directory"
-                        className="text-field-input text-field-input--file"
-                        type="file"
-                        accept="audio/*"
-                        multiple
-                        disabled={false}
-                        onChange={(event) => handleLiveDirectorySelection(event.target.files)}
-                        {...DIRECTORY_INPUT_ATTRIBUTES}
-                      />
-                      <span className="field-hint">
-                        {liveDirectoryFiles.length > 0
-                          ? `${liveDirectoryFiles.length} fichier(s) audio dans ${liveDirectoryName || 'le dossier selectionne'}.`
-                          : 'Clique sur Parcourir puis choisis un dossier contenant tes musiques.'}
-                      </span>
-                    </label>
-                  )}
-                </section>
-
-                <section className="options-section" aria-labelledby="alarm-settings-title">
-                  <div className="section-heading">
-                    <p className="section-kicker">Alarmes</p>
-                    <h3 id="alarm-settings-title">Reglage de l&apos;alarme</h3>
-                  </div>
-
-                  <label className="select-field select-field--compact" htmlFor="alarm-time">
-                    <span className="field-label field-label--checkbox-row">
-                      <input
-                        id="alarm-enabled"
-                        type="checkbox"
-                        checked={alarmEnabled}
-                        onChange={(event) => {
-                          setAlarmEnabled(event.target.checked);
-                          if (!event.target.checked) {
-                            lastTriggeredAlarmMinuteRef.current = null;
-                          }
-                        }}
-                      />
-                      <span>Heure de l&apos;alarme</span>
-                    </span>
-                    <input
-                      id="alarm-time"
-                      className="text-field-input"
-                      type="time"
-                      value={alarmTime}
-                      onChange={(event) => setAlarmTime(event.target.value)}
-                      disabled={!alarmEnabled}
-                    />
-                  </label>
-
-                  <div className="alarm-visual-row">
-                    <label className="field-label field-label--checkbox-row" htmlFor="alarm-visual-enabled">
-                      <input
-                        id="alarm-visual-enabled"
-                        type="checkbox"
-                        checked={alarmVisualEnabled}
-                        onChange={(event) => setAlarmVisualEnabled(event.target.checked)}
-                        disabled={!alarmEnabled}
-                      />
-                      <span>Alarme visuelle</span>
+                      <span className="field-label">Theme</span>
+                      <select
+                        id="theme-select"
+                        value={activeThemeName}
+                        onChange={(event) => setActiveThemeName(event.target.value)}
+                      >
+                        {Object.keys(THEMES).map((themeName) => (
+                          <option key={themeName} value={themeName}>
+                            {themeName}
+                          </option>
+                        ))}
+                      </select>
                     </label>
 
-                    <label className="alarm-color-field" htmlFor="alarm-visual-color">
-                      <span className="sr-only">Couleur de l&apos;alarme visuelle</span>
-                      <input
-                        id="alarm-visual-color"
-                        type="color"
-                        value={alarmVisualColor}
-                        onChange={(event) => setAlarmVisualColor(event.target.value)}
-                        disabled={!alarmEnabled || !alarmVisualEnabled}
-                      />
-                    </label>
-                  </div>
-
-                  <label className="select-field select-field--compact" htmlFor="alarm-source-select">
-                    <span className="field-label field-label--checkbox-row">
-                      <input
-                        id="alarm-audio-enabled"
-                        type="checkbox"
-                        checked={alarmAudioEnabled}
-                        onChange={(event) => setAlarmAudioEnabled(event.target.checked)}
-                        disabled={!alarmEnabled}
-                      />
-                      <span>Source audio</span>
-                    </span>
-                    <select
-                      id="alarm-source-select"
-                      value={alarmSource}
-                      onChange={(event) => setAlarmSource(event.target.value as AlarmSource)}
-                      disabled={!alarmEnabled || !alarmAudioEnabled}
+                    <label
+                      className="select-field select-field--compact"
+                      htmlFor="clock-display-select"
                     >
-                      <option value="file">Son present sur le disque</option>
-                      <option value="radio">Radio via URL</option>
-                    </select>
-                  </label>
-
-                  {alarmSource === 'file' ? (
-                    <label className="select-field select-field--compact" htmlFor="alarm-audio-file">
-                      <span className="field-label">Fichier audio</span>
-                      <input
-                        id="alarm-audio-file"
-                        className="text-field-input text-field-input--file"
-                        type="file"
-                        accept="audio/*"
-                        disabled={!alarmEnabled}
-                        onChange={(event) => {
-                          const file = event.target.files?.[0];
-                          setAlarmFile(file ?? null);
-                        }}
-                      />
-                      <span className="field-hint">
-                        {alarmFile?.name ||
-                          'Aucun fichier choisi : le son par defaut assets/alarm.mp3 sera utilise.'}
-                      </span>
+                      <span className="field-label">Type d&apos;horloge</span>
+                      <select
+                        id="clock-display-select"
+                        value={activeDisplayId}
+                        onChange={(event) =>
+                          setActiveDisplayId(event.target.value as ClockDisplayId)
+                        }
+                      >
+                        {DISPLAY_MODES.map((display) => (
+                          <option key={display.id} value={display.id}>
+                            {display.name}
+                          </option>
+                        ))}
+                      </select>
                     </label>
-                  ) : (
-                    <>
+                  </section>
+                ) : null}
+
+                {optionsTab === 'music' ? (
+                  <section className="options-section">
+                    <label className="select-field select-field--compact" htmlFor="live-audio-source-select">
+                      <span className="field-label">Source</span>
+                      <select
+                        id="live-audio-source-select"
+                        value={liveAudioSource}
+                        onChange={(event) => {
+                          const nextSource = event.target.value as LiveAudioSource;
+                          stopLiveRadioPlayback();
+                          setLiveAudioSource(nextSource);
+                          setLiveRadioCurrentSong(null);
+                        }}
+                      >
+                        <option value="radio">Radio @</option>
+                        <option value="directory">Musique locale</option>
+                      </select>
+                    </label>
+
+                    {liveAudioSource === 'radio' ? (
                       <div className="select-field select-field--compact">
                         <StationCombobox
                           detailsRef={(element) => {
-                            alarmRadioComboboxRef.current = element;
+                            liveRadioOptionsComboboxRef.current = element;
                           }}
-                          buttonId="alarm-radio-station"
-                          searchId="alarm-radio-search"
-                          label="Station laut.fm"
-                          selectedStation={selectedAlarmRadioStation}
-                          suggestions={alarmRadioSuggestions}
-                          recentStations={alarmRadioRecentStations}
-                          searchValue={alarmRadioSearch}
-                          searchState={alarmRadioSearchState}
-                          disabled={!alarmEnabled}
-                          open={alarmRadioComboboxOpen}
-                          onOpenChange={setAlarmRadioComboboxOpen}
-                          onSearchChange={setAlarmRadioSearch}
+                          buttonId="options-live-radio-select"
+                          searchId="options-live-radio-search"
+                          label="Selection radio"
+                          selectedStation={selectedLiveRadioStation}
+                          suggestions={liveRadioSuggestions}
+                          recentStations={liveRadioRecentStations}
+                          searchValue={liveRadioSearch}
+                          searchState={deferredLiveRadioSearch !== liveRadioSearch ? 'loading' : 'idle'}
+                          currentSongLabel={liveRadioCurrentSongLabel}
+                          open={liveRadioComboboxOpen}
+                          onOpenChange={setLiveRadioComboboxOpen}
+                          onSearchChange={setLiveRadioSearch}
                           onSelect={(stationId) => {
-                            setAlarmRadioStationId(stationId);
+                            pendingLiveAutoplayRef.current = 'radio';
+                            setLiveRadioStationId(stationId);
                             rememberRecentStation(stationId);
-                            setAlarmRadioSearch('');
-                            setAlarmRadioComboboxOpen(false);
+                            setLiveRadioSearch('');
+                            setLiveRadioComboboxOpen(false);
                           }}
                         />
-                        <span className="field-hint">
-                          {alarmRadioSearchState === 'loading'
-                            ? 'Recherche laut.fm en cours...'
-                            : alarmRadioSearchState === 'error'
-                              ? 'Recherche indisponible, stations par defaut affichees.'
-                              : `Flux selectionne : ${selectedAlarmRadioStation.url}`}
-                        </span>
                       </div>
-
-                      <label
-                        className="select-field select-field--compact"
-                        htmlFor="alarm-radio-url"
-                      >
-                        <span className="field-label">Ajouter une URL de radio</span>
+                    ) : (
+                      <label className="select-field select-field--compact" htmlFor="live-audio-directory">
+                        <span className="field-label">Selection son local</span>
                         <input
-                          id="alarm-radio-url"
-                          className="text-field-input"
-                          type="url"
-                          inputMode="url"
-                          placeholder="https://..."
-                          value={alarmRadioUrl}
-                          onChange={(event) => setAlarmRadioUrl(event.target.value)}
-                          disabled={!alarmEnabled}
+                          ref={liveDirectoryInputRef}
+                          id="live-audio-directory"
+                          className="text-field-input text-field-input--file"
+                          type="file"
+                          accept="audio/*"
+                          multiple
+                          disabled={false}
+                          onChange={(event) => handleLiveDirectorySelection(event.target.files)}
+                          {...DIRECTORY_INPUT_ATTRIBUTES}
                         />
                         <span className="field-hint">
-                          Cette ligne permet de saisir un flux personnalise a la place
-                          d&apos;une station laut.fm. Laisse vide pour utiliser la station
-                          selectionnee.
+                          {liveDirectoryFiles.length > 0
+                            ? `${liveDirectoryFiles.length} fichier(s) audio dans ${liveDirectoryName || 'le dossier selectionne'}.`
+                            : 'Clique sur Parcourir puis choisis un dossier contenant tes musiques.'}
                         </span>
                       </label>
-                    </>
-                  )}
+                    )}
+                  </section>
+                ) : null}
 
-                  <div className="alarm-actions">
+                {optionsTab === 'alarms' ? (
+                  <section className="options-section">
                     <button
                       type="button"
-                      className="action-button"
-                      disabled={!alarmEnabled}
-                      onClick={() => void startAlarmPlayback('Lecture de test de l’alarme.')}
+                      className="action-button alarm-add-button"
+                      onClick={addAlarm}
+                      disabled={alarms.length >= 5}
                     >
-                      Tester l&apos;alarme
+                      + Ajouter une alarme
                     </button>
 
-                    <button
-                      type="button"
-                      className="action-button action-button--secondary"
-                      disabled={alarmPlaybackState !== 'ringing'}
-                      onClick={stopAlarmPlayback}
-                    >
-                      Arreter le son
-                    </button>
-                  </div>
+                    {alarms.length > 0 ? (
+                      <div className="alarm-list">
+                        {alarms.map((alarm, index) => (
+                          <div
+                            key={alarm.id}
+                            className="alarm-row"
+                            style={{ '--alarm-row-accent': alarm.color } as CSSProperties}
+                          >
+                            <div className="alarm-row-header">
+                              <div className="alarm-title-group">
+                                <span className="alarm-badge">
+                                  Alarme {index + 1}
+                                </span>
 
-                  {alarmStatusMessage ? (
-                    <p
-                      className={`alarm-status alarm-status--${alarmPlaybackState}`}
-                      role="status"
-                    >
-                      {alarmStatusMessage}
-                    </p>
-                  ) : null}
-                </section>
+                                <label className="alarm-badge-color-field" htmlFor={`alarm-color-${alarm.id}`}>
+                                  <span className="sr-only">Couleur de l&apos;alarme {index + 1}</span>
+                                  <span className="alarm-badge-color-icon" aria-hidden="true">
+                                    🖌
+                                  </span>
+                                  <input
+                                    id={`alarm-color-${alarm.id}`}
+                                    type="color"
+                                    value={alarm.color}
+                                    onChange={(event) =>
+                                      updateAlarm(alarm.id, { color: event.target.value })
+                                    }
+                                  />
+                                </label>
+                              </div>
+
+                              <input
+                                className="text-field-input alarm-name-input"
+                                type="text"
+                                value={alarm.name}
+                                onChange={(event) =>
+                                  updateAlarm(alarm.id, { name: event.target.value })
+                                }
+                                placeholder="Nom de l'alarme"
+                                aria-label={`Nom de l'alarme ${index + 1}`}
+                              />
+                            </div>
+
+                            <div className="alarm-row-controls">
+                              <label className="select-field select-field--compact" htmlFor={`alarm-frequency-${alarm.id}`}>
+                                <span className="sr-only">Frequence de l&apos;alarme {index + 1}</span>
+                                <select
+                                  id={`alarm-frequency-${alarm.id}`}
+                                  value={alarm.frequency}
+                                  onChange={(event) =>
+                                    updateAlarm(alarm.id, {
+                                      frequency: event.target.value as AlarmDefinition['frequency'],
+                                    })
+                                  }
+                                >
+                                  <option value="once">Unique</option>
+                                  <option value="weekdays">Du lundi au vendredi</option>
+                                  <option value="daily">Tous les jours</option>
+                                </select>
+                              </label>
+
+                              <input
+                                id={`alarm-time-${alarm.id}`}
+                                className="text-field-input alarm-time-input"
+                                type="time"
+                                value={alarm.time}
+                                onChange={(event) =>
+                                  updateAlarm(alarm.id, { time: event.target.value })
+                                }
+                              />
+
+                              <button
+                                type="button"
+                                className="action-button action-button--secondary alarm-row-remove"
+                                onClick={() => removeAlarm(alarm.id)}
+                                aria-label={`Supprimer l'alarme ${index + 1}`}
+                                title="Supprimer cette alarme"
+                              >
+                                ×
+                              </button>
+                            </div>
+
+                            <div className="alarm-row-source">
+                              <label className="select-field select-field--compact" htmlFor={`alarm-mode-${alarm.id}`}>
+                                <span className="sr-only">Mode de l&apos;alarme {index + 1}</span>
+                                <select
+                                  id={`alarm-mode-${alarm.id}`}
+                                  value={alarm.mode}
+                                  onChange={(event) =>
+                                    updateAlarm(alarm.id, {
+                                      mode: event.target.value as AlarmMode,
+                                    })
+                                  }
+                                >
+                                  <option value="visual">Alarme visuelle uniquement</option>
+                                  <option value="radio">Alarme visuelle + radio @</option>
+                                  <option value="file">Alarme visuelle + musique locale</option>
+                                </select>
+                              </label>
+
+                              {alarm.mode === 'radio' ? (
+                                <label className="select-field select-field--compact" htmlFor={`alarm-radio-${alarm.id}`}>
+                                  <span className="field-label">Choisir la radio</span>
+                                  <select
+                                    id={`alarm-radio-${alarm.id}`}
+                                    value={alarm.radioStationId}
+                                    onChange={(event) =>
+                                      updateAlarm(alarm.id, {
+                                        radioStationId: event.target.value,
+                                      })
+                                    }
+                                  >
+                                    {DEFAULT_LAUT_FM_STATIONS.map((station) => (
+                                      <option key={station.id} value={station.id}>
+                                        {station.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              ) : null}
+
+                              {alarm.mode === 'file' ? (
+                                <div className="alarm-local-file">
+                                  <input
+                                    ref={(element) => {
+                                      alarmFileInputRefs.current[alarm.id] = element;
+                                    }}
+                                    id={`alarm-file-${alarm.id}`}
+                                    className="alarm-local-file-input"
+                                    type="file"
+                                    accept="audio/*"
+                                    onChange={(event) =>
+                                      handleAlarmFileSelection(alarm.id, event.target.files)
+                                    }
+                                  />
+                                  <button
+                                    type="button"
+                                    className="action-button action-button--secondary alarm-file-button"
+                                    onClick={() => handleAlarmFileBrowse(alarm.id)}
+                                  >
+                                    Parcourir
+                                  </button>
+                                  <span className="field-hint">
+                                    {alarm.fileName || 'Aucun son local selectionne.'}
+                                  </span>
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {alarmStatusMessage ? (
+                      <p
+                        className={`alarm-status alarm-status--${alarmPlaybackState}`}
+                        role="status"
+                      >
+                        {alarmStatusMessage}
+                      </p>
+                    ) : null}
+                  </section>
+                ) : null}
               </div>
             </details>
           </div>
@@ -1792,8 +1902,8 @@ function App() {
             activeDisplay,
             currentTime,
             activeTheme,
-            alarmTime,
-            alarmEnabled,
+            primaryAlarmTime,
+            alarms.length > 0,
           )}
         </article>
       </section>
