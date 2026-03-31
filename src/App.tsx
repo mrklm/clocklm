@@ -7,6 +7,7 @@ import {
   type CSSProperties,
   type InputHTMLAttributes,
 } from 'react';
+import { getVersion } from '@tauri-apps/api/app';
 import { AppShell } from './components/AppShell';
 import { AnalogClockCard } from './features/clocks/components/AnalogClockCard';
 import { FlipClockCard } from './features/clocks/components/FlipClockCard';
@@ -86,7 +87,7 @@ const DEFAULT_LAUT_FM_STATIONS: LautFmStation[] = [
   createLautFmStation('rockmag', 'Rockmag', 'Rock'),
 ];
 const ALARM_SETTINGS_STORAGE_KEY = 'clocklm.alarm-settings';
-const APP_SIGNATURE = `Clocklm v${packageJson.version}`;
+const APP_SIGNATURE_FALLBACK = `Clocklm v${packageJson.version}`;
 const APP_REPOSITORY_URL = 'https://github.com/mrklm/clocklm';
 const DIRECTORY_INPUT_ATTRIBUTES = {
   webkitdirectory: '',
@@ -409,6 +410,7 @@ type StationComboboxProps = {
   onSearchChange: (value: string) => void;
   onSelect: (stationId: string) => void;
   className?: string;
+  detailsRef?: (element: HTMLDetailsElement | null) => void;
 };
 
 function StationCombobox({
@@ -427,6 +429,7 @@ function StationCombobox({
   onSearchChange,
   onSelect,
   className,
+  detailsRef,
 }: StationComboboxProps) {
   const displayedStations = searchValue.trim() ? suggestions : recentStations;
 
@@ -434,6 +437,7 @@ function StationCombobox({
     <div className={className}>
       {label ? <span className="field-label">{label}</span> : null}
       <details
+        ref={detailsRef}
         className={`station-combobox${open ? ' station-combobox--open' : ''}`}
         open={open}
         onToggle={(event) => onOpenChange((event.currentTarget as HTMLDetailsElement).open)}
@@ -536,6 +540,7 @@ function App() {
   const storedAlarmSettings = readStoredAlarmSettings();
   const [activeDisplayId, setActiveDisplayId] = useState<ClockDisplayId>('analog');
   const [activeThemeName, setActiveThemeName] = useState(DEFAULT_THEME_NAME);
+  const [appSignature, setAppSignature] = useState(APP_SIGNATURE_FALLBACK);
   const [alarmEnabled, setAlarmEnabled] = useState(
     storedAlarmSettings?.alarmEnabled ?? false,
   );
@@ -589,6 +594,7 @@ function App() {
   const [alarmRadioSearchState, setAlarmRadioSearchState] = useState<
     'idle' | 'loading' | 'error'
   >('idle');
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const [alarmRadioComboboxOpen, setAlarmRadioComboboxOpen] = useState(false);
   const [liveRadioComboboxOpen, setLiveRadioComboboxOpen] = useState(false);
   const currentTime = useSystemTime();
@@ -600,8 +606,73 @@ function App() {
   const liveDirectoryObjectUrlsRef = useRef<string[]>([]);
   const liveDirectoryTrackIndexRef = useRef(0);
   const liveDirectoryPlaybackModeRef = useRef<LiveDirectoryPlaybackMode>('normal');
+  const pendingLiveAutoplayRef = useRef<LiveAudioSource | null>(null);
+  const optionsMenuRef = useRef<HTMLDetailsElement | null>(null);
+  const liveRadioStageComboboxRef = useRef<HTMLDetailsElement | null>(null);
+  const liveRadioOptionsComboboxRef = useRef<HTMLDetailsElement | null>(null);
+  const alarmRadioComboboxRef = useRef<HTMLDetailsElement | null>(null);
   const deferredAlarmRadioSearch = useDeferredValue(alarmRadioSearch);
   const deferredLiveRadioSearch = useDeferredValue(liveRadioSearch);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void getVersion()
+      .then((version) => {
+        if (!cancelled) {
+          setAppSignature(`Clocklm v${version}`);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAppSignature(APP_SIGNATURE_FALLBACK);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      const targetNode = event.target;
+      if (!(targetNode instanceof Node)) {
+        return;
+      }
+
+      if (
+        optionsOpen
+        && optionsMenuRef.current
+        && !optionsMenuRef.current.contains(targetNode)
+      ) {
+        setOptionsOpen(false);
+      }
+
+      if (
+        liveRadioComboboxOpen
+        && ![
+          liveRadioStageComboboxRef.current,
+          liveRadioOptionsComboboxRef.current,
+        ].some((element) => element?.contains(targetNode))
+      ) {
+        setLiveRadioComboboxOpen(false);
+      }
+
+      if (
+        alarmRadioComboboxOpen
+        && alarmRadioComboboxRef.current
+        && !alarmRadioComboboxRef.current.contains(targetNode)
+      ) {
+        setAlarmRadioComboboxOpen(false);
+      }
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown);
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [alarmRadioComboboxOpen, liveRadioComboboxOpen, optionsOpen]);
 
   const activeDisplay = useMemo(
     () =>
@@ -922,10 +993,12 @@ function App() {
     setLiveDirectoryTrackLabel('');
 
     if (selectedFiles.length === 0) {
+      pendingLiveAutoplayRef.current = null;
       setLiveDirectoryName('');
       return;
     }
 
+    pendingLiveAutoplayRef.current = 'directory';
     const firstFile = selectedFiles[0];
     const relativePath =
       'webkitRelativePath' in firstFile ? firstFile.webkitRelativePath : '';
@@ -1060,12 +1133,29 @@ function App() {
   }, [alarmPlaybackState]);
 
   useEffect(() => {
-    if (liveAudioSource !== 'radio' || liveRadioPlaybackState !== 'playing') {
+    if (
+      liveAudioSource !== 'radio'
+      || pendingLiveAutoplayRef.current !== 'radio'
+    ) {
       return;
     }
 
+    pendingLiveAutoplayRef.current = null;
     void startLiveRadioPlayback();
   }, [liveAudioSource, liveRadioStationId]);
+
+  useEffect(() => {
+    if (
+      liveAudioSource !== 'directory'
+      || pendingLiveAutoplayRef.current !== 'directory'
+      || liveDirectoryFiles.length === 0
+    ) {
+      return;
+    }
+
+    pendingLiveAutoplayRef.current = null;
+    void playLiveDirectoryTrack(0);
+  }, [liveAudioSource, liveDirectoryFiles]);
 
   useEffect(() => {
     if (liveAudioSource !== 'radio' || !supportsLautFmCurrentSong(selectedLiveRadioStation)) {
@@ -1202,7 +1292,7 @@ function App() {
   return (
     <AppShell
       style={themeStyle}
-      appSignature={APP_SIGNATURE}
+      appSignature={appSignature}
       appSignatureHref={APP_REPOSITORY_URL}
     >
       <section className="clock-layout" data-theme-family={themeFamily}>
@@ -1217,6 +1307,9 @@ function App() {
           <div className="live-radio-controls">
             {liveAudioSource === 'radio' ? (
               <StationCombobox
+                detailsRef={(element) => {
+                  liveRadioStageComboboxRef.current = element;
+                }}
                 buttonId="live-radio-select"
                 searchId="live-radio-search"
                 selectedStation={selectedLiveRadioStation}
@@ -1229,6 +1322,7 @@ function App() {
                 onOpenChange={setLiveRadioComboboxOpen}
                 onSearchChange={setLiveRadioSearch}
                 onSelect={(stationId) => {
+                  pendingLiveAutoplayRef.current = 'radio';
                   setLiveRadioStationId(stationId);
                   rememberRecentStation(stationId);
                   setLiveRadioSearch('');
@@ -1373,8 +1467,17 @@ function App() {
           </div>
 
           <div className="top-controls">
-            <details className="options-menu">
-              <summary className="options-button">Options</summary>
+            <details
+              ref={optionsMenuRef}
+              className="options-menu"
+              open={optionsOpen}
+              onToggle={(event) =>
+                setOptionsOpen((event.currentTarget as HTMLDetailsElement).open)
+              }
+            >
+              <summary className="options-button" aria-label="Options" title="Options">
+                <span aria-hidden="true">⚙</span>
+              </summary>
 
               <div className="options-panel">
                 <label
@@ -1441,6 +1544,9 @@ function App() {
                   {liveAudioSource === 'radio' ? (
                     <div className="select-field select-field--compact">
                       <StationCombobox
+                        detailsRef={(element) => {
+                          liveRadioOptionsComboboxRef.current = element;
+                        }}
                         buttonId="options-live-radio-select"
                         searchId="options-live-radio-search"
                         label="Station"
@@ -1454,6 +1560,7 @@ function App() {
                         onOpenChange={setLiveRadioComboboxOpen}
                         onSearchChange={setLiveRadioSearch}
                         onSelect={(stationId) => {
+                          pendingLiveAutoplayRef.current = 'radio';
                           setLiveRadioStationId(stationId);
                           rememberRecentStation(stationId);
                           setLiveRadioSearch('');
@@ -1584,6 +1691,9 @@ function App() {
                     <>
                       <div className="select-field select-field--compact">
                         <StationCombobox
+                          detailsRef={(element) => {
+                            alarmRadioComboboxRef.current = element;
+                          }}
                           buttonId="alarm-radio-station"
                           searchId="alarm-radio-search"
                           label="Station laut.fm"

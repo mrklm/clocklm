@@ -5,6 +5,14 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.11] - 2026-03-31
+
+### Ajouté
+ 
+ - Autoplay musique locale & et radio @
+ - Pictograme sur le bouton options
+ - Les fenetres se ferment si clique en dehors
+
 ## [1.0.10] - 2026-03-30
 
 ### Ajouté
