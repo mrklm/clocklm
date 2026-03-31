@@ -17,6 +17,7 @@ import { useSystemTime } from './features/clocks/hooks/useSystemTime';
 import { DEFAULT_THEME_NAME, THEMES } from './themes/themes';
 import type { ClockDisplayDefinition, ClockDisplayId } from './types/clock';
 import type { ThemePalette } from './types/theme';
+import clocklmIconUrl from '../assets/clocklm.png';
 import defaultAlarmSoundUrl from '../assets/alarm.mp3';
 import packageJson from '../package.json';
 import './styles/app.css';
@@ -1480,6 +1481,14 @@ function App() {
               </summary>
 
               <div className="options-panel">
+                <div className="options-header">
+                  <img className="options-header-icon" src={clocklmIconUrl} alt="" />
+                  <div className="options-header-copy">
+                    <p className="options-header-title">Clocklm</p>
+                    <p className="options-header-version">{appSignature}</p>
+                  </div>
+                </div>
+
                 <label
                   className="select-field select-field--compact"
                   htmlFor="theme-select"

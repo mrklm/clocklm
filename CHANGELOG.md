@@ -5,6 +5,13 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.12] - 2026-03-31
+
+### Ajouté
+
+ - Maj version affichée en bas a droite auto
+ - Affichage icone + nom prog + verion dans fenetre option
+
 ## [1.0.11] - 2026-03-31
 
 ### Ajouté

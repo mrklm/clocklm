@@ -433,6 +433,46 @@
   overscroll-behavior: contain;
 }
 
+.options-header {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding-bottom: 0.15rem;
+}
+
+.options-header-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 18%, transparent),
+    0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
+.options-header-copy {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.options-header-title,
+.options-header-version {
+  margin: 0;
+}
+
+.options-header-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--theme-fg);
+}
+
+.options-header-version {
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--theme-fg) 68%, transparent);
+}
+
 .options-section {
   display: grid;
   gap: 0.65rem;
