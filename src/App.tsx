@@ -45,6 +45,7 @@ type LautFmStation = {
   provider?: 'lautfm' | 'custom';
   metadataUrl?: string;
   metadataFallbackUrl?: string;
+  metadataStrategy?: 'json-result' | 'bigfm-html';
 };
 
 type LautFmCurrentSong = {
@@ -71,6 +72,7 @@ function createCustomStation(
   pageUrl: string,
   metadataUrl?: string,
   metadataFallbackUrl?: string,
+  metadataStrategy: LautFmStation['metadataStrategy'] = 'json-result',
 ): LautFmStation {
   return {
     id,
@@ -81,11 +83,12 @@ function createCustomStation(
     provider: 'custom',
     metadataUrl,
     metadataFallbackUrl,
+    metadataStrategy,
   };
 }
 
 const DEFAULT_LAUT_FM_STATIONS: LautFmStation[] = [
-  createLautFmStation('allstations', 'Allstations', 'Multi-style / decouverte'),
+  createLautFmStation('lofi', 'Lofi', 'Lofi hip-hop / chill beats'),
   createCustomStation(
     'djam-radio',
     'Le new Djam',
@@ -94,7 +97,19 @@ const DEFAULT_LAUT_FM_STATIONS: LautFmStation[] = [
     'https://www.djam.radio/',
     'https://api.xdevel.com/streamsolution/web/metadata/1515/?clientId=0bc0bd3968b344ab338838b2120da61fbc0d0093',
     'https://api.radiosolution.fr/data/titrage/lebonmix-soft.json',
+    'json-result',
   ),
+  createCustomStation(
+    'bigfm-lofi-focus',
+    'bigFM LoFi Focus',
+    'Lofi hip-hop / chill beats',
+    'https://stream.bigfm.de/lofifocus/mp3-128/stream.bigfm.de/play.pls',
+    'https://www.bigfm.de/webradio/lofi',
+    'https://www.bigfm.de/webradio/lofi',
+    undefined,
+    'bigfm-html',
+  ),
+  createLautFmStation('allstations', 'Allstations', 'Multi-style / decouverte'),
   createLautFmStation('light-radio', 'Light Radio', 'Pop / chill'),
   createLautFmStation('clubhits', 'Clubhits', 'Dance / electro'),
   createLautFmStation('sound', 'Sound', 'Country / americana'),
@@ -239,6 +254,7 @@ function normalizeLautFmStation(station: {
     style,
     url: `https://stream.laut.fm/${id}`,
     pageUrl,
+    provider: 'lautfm',
   };
 }
 
@@ -320,6 +336,52 @@ async function fetchCustomCurrentSong(
   station: LautFmStation,
   signal?: AbortSignal,
 ): Promise<LautFmCurrentSong | null> {
+  if (station.metadataStrategy === 'bigfm-html' && station.metadataUrl) {
+    try {
+      const response = await fetch(station.metadataUrl, { signal });
+      if (!response.ok) {
+        return null;
+      }
+
+      const html = await response.text();
+      const artistMatch =
+        html.match(/<div class="artist"><span>(.*?)<\/span><\/div>/i)
+        ?? html.match(/trackInfo-track">([^<]+?) mit ([^<]+)</i);
+      const songMatch = html.match(/<div class="song"><span>(.*?)<\/span><\/div>/i);
+
+      const decodeHtmlEntities = (value: string) =>
+        value
+          .replace(/&amp;/g, '&')
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>');
+
+      const artistName = decodeHtmlEntities(
+        artistMatch
+          ? artistMatch.length > 2
+            ? artistMatch[1]
+            : artistMatch[1]
+          : '',
+      ).trim();
+      const title = decodeHtmlEntities(
+        songMatch?.[1] ?? (artistMatch && artistMatch.length > 2 ? artistMatch[2] : ''),
+      ).trim();
+
+      if (artistName || title) {
+        return {
+          artistName,
+          title,
+        };
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw error;
+      }
+      return null;
+    }
+  }
+
   const metadataUrls = [station.metadataUrl, station.metadataFallbackUrl].filter(
     (url): url is string => typeof url === 'string' && url.trim().length > 0,
   );

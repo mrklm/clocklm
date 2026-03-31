@@ -4,6 +4,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
+## [1.0.15] - 2026-03-31
+
+ ### Ajouté
+
+  - Correctifif tags multi radio
+  - Ajout d'un fichier Appimage dans la sortie de build Linux
 
 ## [1.0.14] - 2026-03-31
 
@@ -12,7 +18,6 @@ Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
  - Icone minimaliste pour le lecteur audio
  - Récuperation des tags pour le Djam
  - Tags en transparence
-
 
 ## [1.0.13] - 2026-03-31
 

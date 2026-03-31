@@ -6,9 +6,16 @@ Application d'horloge et d'alarme en TypeScript + React + Three.js, avec emballa
 
 Les builds desktop sont publies automatiquement a chaque tag de version.
 
-- Ubuntu `.deb` : [telecharger la derniere version](../../releases/latest/download/Clocklm_linux.deb)
-- Windows `.msi` : [telecharger la derniere version](../../releases/latest/download/Clocklm_windows.msi)
-- macOS `.dmg` : [telecharger la derniere version](../../releases/latest/download/Clocklm_macos.dmg)
+### Applications standalone
+
+- Linux
+  - `.AppImage`
+  - `.deb`
+- Windows
+  - `.msi`
+- macOS
+  - `.dmg`
+
 - Toutes les versions : [page Releases](../../releases/latest)
 
 ## Objectifs initiaux
@@ -58,6 +65,7 @@ Plateformes construites :
 Formats publies :
 
 - Ubuntu : `.deb`
+- Linux : `.AppImage`
 - Windows : `.msi`
 - macOS : `.dmg`
 
