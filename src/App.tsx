@@ -88,7 +88,6 @@ function createCustomStation(
 }
 
 const DEFAULT_LAUT_FM_STATIONS: LautFmStation[] = [
-  createLautFmStation('lofi', 'Lofi', 'Lofi hip-hop / chill beats'),
   createCustomStation(
     'djam-radio',
     'Le new Djam',
@@ -99,26 +98,14 @@ const DEFAULT_LAUT_FM_STATIONS: LautFmStation[] = [
     'https://api.radiosolution.fr/data/titrage/lebonmix-soft.json',
     'json-result',
   ),
-  createCustomStation(
-    'bigfm-lofi-focus',
-    'bigFM LoFi Focus',
-    'Lofi hip-hop / chill beats',
-    'https://stream.bigfm.de/lofifocus/mp3-128/stream.bigfm.de/play.pls',
-    'https://www.bigfm.de/webradio/lofi',
-    'https://www.bigfm.de/webradio/lofi',
-    undefined,
-    'bigfm-html',
-  ),
-  createLautFmStation('allstations', 'Allstations', 'Multi-style / decouverte'),
-  createLautFmStation('light-radio', 'Light Radio', 'Pop / chill'),
-  createLautFmStation('clubhits', 'Clubhits', 'Dance / electro'),
-  createLautFmStation('sound', 'Sound', 'Country / americana'),
-  createLautFmStation('gothica', 'Gothica', 'Rock gothique'),
-  createLautFmStation('vaporwave', 'Vaporwave', 'Vaporwave / retro'),
-  createLautFmStation('bluesrockcafe', 'Blues Rock Cafe', 'Blues / rock'),
+  createLautFmStation('lofi', 'laut.fm lofi', 'Lofi hip-hop / chill beats'),
+  createLautFmStation('soulmama', 'Soulmama', 'Soul / funk / jazz'),
+  createLautFmStation('delasoul', 'Delasoul', 'Soul / funk / R&B'),
+  createLautFmStation('soulfood', 'Soulfood', 'Soul / funk / jazz'),
   createLautFmStation('jazzrockfusion', 'Jazz Rock Fusion', 'Jazz fusion / funk'),
-  createLautFmStation('natureadio', 'Naturadio', 'Ambient / folk / pop'),
-  createLautFmStation('rockmag', 'Rockmag', 'Rock'),
+  createLautFmStation('bluesrockcafe', 'Blues Rock Cafe', 'Blues / rock'),
+  createLautFmStation('natureadio', 'Naturadio', 'Ambient / folk / chill'),
+  createLautFmStation('vaporwave', 'Vaporwave', 'Vaporwave / retro'),
 ];
 const ALARM_BADGE_COLOR_PALETTE = [
   '#ff8a3d',
@@ -169,7 +156,14 @@ function renderActiveDisplay(
         />
       );
     case 'flip':
-      return <FlipClockCard currentTime={currentTime} display={display} showDate={showDate} />;
+      return (
+        <FlipClockCard
+          currentTime={currentTime}
+          display={display}
+          showDate={showDate}
+          alarmColors={alarmColors}
+        />
+      );
     default:
       return null;
   }

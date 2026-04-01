@@ -4,6 +4,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
+## [1.0.18] - 2026-04-1
+
+ ### Modifié
+
+  - Agencement de l'horloge à lamelles
+
 ## [1.0.17] - 2026-04-1
 
  ### Modifié
