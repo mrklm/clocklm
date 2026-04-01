@@ -1,4 +1,4 @@
-# Clocklm
+# Clock.l.m
 
 <p align="center">
   <img src="https://img.shields.io/badge/TypeScript-Ready-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
@@ -25,13 +25,14 @@
   Linux • Windows • macOS Intel
 </p>
 
-Clocklm est une application d'horloge et d'alarme orientee desktop, avec une presentation visuelle soignee et une base technique moderne. Le projet met l'accent sur plusieurs styles d'affichage, une interface claire et un packaging natif simple a distribuer.
+Clock.l.m est une application d'horloge et d'alarme orientee desktop, avec une presentation visuelle soignee et une base technique moderne. Le projet met l'accent sur plusieurs styles d'affichage, une interface claire et un packaging natif simple a distribuer.
 
 ## 📚 Sommaire
 
 - [✨ Points forts](#-points-forts)
 - [🖼️ Apercu](#️-apercu)
 - [📦 Telechargements](#-telechargements)
+- [🌐 Version web](#-version-web)
 - [🚀 Demarrage rapide](#-demarrage-rapide)
 - [🖥️ Compatibilite](#️-compatibilite)
 - [🧱 Structure du projet](#-structure-du-projet)
@@ -76,6 +77,21 @@ Les builds desktop sont publies automatiquement a chaque tag de version.
 
 - Toutes les versions : [page Releases](../../releases/latest)
 
+## 🌐 Version web
+
+Une version web statique est publiee via GitHub Pages :
+
+- Site : [mrklm.github.io/clocklm](https://mrklm.github.io/clocklm/)
+
+Cette version reprend l'interface React/Vite de Clock.l.m pour un usage dans le navigateur.
+
+### Differences avec la version desktop
+
+- Version web : accessible instantanement dans le navigateur, sans installation
+- Version desktop : application Tauri native, plus adaptee a un usage quotidien local
+- Version web : ne fournit pas l'emballage natif Tauri
+- Version desktop : permet la distribution `.AppImage`, `.deb`, `.msi` et `.dmg`
+
 ## 🚀 Demarrage rapide
 
 ### Version web
@@ -83,6 +99,12 @@ Les builds desktop sont publies automatiquement a chaque tag de version.
 ```bash
 npm install
 npm run dev
+```
+
+### Build web
+
+```bash
+npm run build
 ```
 
 ### Version desktop Tauri
@@ -140,6 +162,8 @@ Le workflow [`.github/workflows/tauri-release.yml`](.github/workflows/tauri-rele
 - Linux : `.AppImage`
 - Windows : `.msi`
 - macOS Intel : `.dmg`
+
+Le workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml) publie de son cote la version web sur GitHub Pages a chaque push sur `main`.
 
 ## 📝 Notes
 

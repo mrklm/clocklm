@@ -5,6 +5,15 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+
+## [1.0.20] - 2026-04-1
+
+ ### Ajouté
+
+ - Deploiement d'une github page pour la version web
+
+ ### Modifié
+
 ## [1.0.19] - 2026-04-1
 
  ### Modifié
