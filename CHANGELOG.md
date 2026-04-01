@@ -4,6 +4,15 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
+
+## [1.0.19] - 2026-04-1
+
+ ### Modifié
+
+  - Modification du pictogramme pinceau pour les couleurs d'alarme
+  - Modif nom programme -> Clock.l.m
+  - Ajout d'espace dans l'heure pour l'horloge "Seven seg"
+
 ## [1.0.18] - 2026-04-1
 
  ### Modifié

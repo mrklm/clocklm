@@ -486,7 +486,7 @@ function createClockScene(
 ) {
   const frame = new Mesh(
     new RingGeometry(0.91, 0.919, 96),
-    new MeshStandardMaterial({ color: theme.PANEL, metalness: 0.22, roughness: 0.62 }),
+    new MeshStandardMaterial({ color: theme.ACCENT, metalness: 0.22, roughness: 0.62 }),
   );
 
   const face = new Mesh(

@@ -17,7 +17,8 @@ import { useSystemTime } from './features/clocks/hooks/useSystemTime';
 import { DEFAULT_THEME_NAME, THEMES } from './themes/themes';
 import type { ClockDisplayDefinition, ClockDisplayId } from './types/clock';
 import type { ThemePalette } from './types/theme';
-import clocklmIconUrl from '../assets/clocklm.png';
+import optionsIconUrl from '../assets/options.svg';
+import pinceauIconUrl from '../assets/pinceau.svg';
 import packageJson from '../package.json';
 import './styles/app.css';
 
@@ -118,7 +119,7 @@ const ALARM_BADGE_COLOR_PALETTE = [
   '#fb5607',
 ];
 const ALARM_SETTINGS_STORAGE_KEY = 'clocklm.alarm-settings';
-const APP_SIGNATURE_FALLBACK = `Clocklm v${packageJson.version}`;
+const APP_SIGNATURE_FALLBACK = `Clock.l.m v${packageJson.version}`;
 const APP_REPOSITORY_URL = 'https://github.com/mrklm/clocklm';
 const DIRECTORY_INPUT_ATTRIBUTES = {
   webkitdirectory: '',
@@ -832,7 +833,7 @@ function App() {
     void getVersion()
       .then((version) => {
         if (!cancelled) {
-          setAppSignature(`Clocklm v${version}`);
+          setAppSignature(`Clock.l.m v${version}`);
         }
       })
       .catch(() => {
@@ -1746,7 +1747,7 @@ function App() {
 
               <div className="options-panel">
                 <div className="options-header">
-                  <img className="options-header-icon" src={clocklmIconUrl} alt="" />
+                  <img className="options-header-icon" src={optionsIconUrl} alt="" />
                   <p className="options-header-version">{appSignature}</p>
                 </div>
 
@@ -1930,7 +1931,7 @@ function App() {
                                 <label className="alarm-badge-color-field" htmlFor={`alarm-color-${alarm.id}`}>
                                   <span className="sr-only">Couleur de l&apos;alarme {index + 1}</span>
                                   <span className="alarm-badge-color-icon" aria-hidden="true">
-                                    🖌
+                                    <img src={pinceauIconUrl} alt="" />
                                   </span>
                                   <input
                                     id={`alarm-color-${alarm.id}`}
