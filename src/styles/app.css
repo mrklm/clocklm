@@ -973,11 +973,12 @@
 
 .segment-preview {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(0.15rem, 0.45vw, 0.4rem);
+  gap: clamp(0.8rem, 2vh, 1.5rem);
   min-height: calc(100vh - 74px);
-  padding: 0.15rem;
+  padding: clamp(0.35rem, 1vh, 0.85rem);
   border-radius: 22px;
   background: linear-gradient(180deg, #050505 0%, #090909 45%, #030303 100%);
   box-shadow:
@@ -985,16 +986,71 @@
     inset 0 -24px 40px rgba(0, 0, 0, 0.4);
 }
 
+.segment-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.15rem, 0.45vw, 0.4rem);
+  width: 100%;
+}
+
+.segment-row--time {
+  flex: 0 1 auto;
+}
+
+.segment-time-cluster {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-right: clamp(2.8rem, 5vw, 4.6rem);
+}
+
+.segment-alarm-bells {
+  position: absolute;
+  right: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(0.35rem, 0.8vw, 0.7rem);
+}
+
+.segment-alarm-bell {
+  width: clamp(2.7rem, 4.8vw, 4.05rem);
+  height: clamp(2.7rem, 4.8vw, 4.05rem);
+  display: block;
+  filter:
+    drop-shadow(0 0 7px color-mix(in srgb, currentColor 55%, transparent))
+    drop-shadow(0 0 16px color-mix(in srgb, currentColor 18%, transparent));
+}
+
+.segment-row--date {
+  gap: clamp(0.08rem, 0.25vw, 0.24rem);
+}
+
+.segment-row--date .segment-digit {
+  width: min(2.25vw, 27px);
+  height: min(4.25vw, 51px);
+}
+
+.segment-row--date .segment-colon-wrap {
+  width: min(0.45vw, 4px);
+  height: min(4.25vw, 51px);
+}
+
+.segment-row--date .segment-colon span {
+  width: min(0.3vw, 2.5px);
+  height: min(0.3vw, 2.5px);
+}
+
 .segment-digit {
   position: relative;
   width: min(18vw, 220px);
   height: min(34vw, 420px);
   border-radius: clamp(0.9rem, 2vw, 1.6rem);
-  background: linear-gradient(180deg, #050505 0%, #020202 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    inset 0 -18px 24px rgba(0, 0, 0, 0.28),
-    0 0 0 1px rgba(255, 255, 255, 0.02);
+  background: transparent;
+  box-shadow: none;
 }
 
 .segment-digit-svg {
@@ -1005,45 +1061,48 @@
 }
 
 .segment-shape {
-  fill: rgba(0, 0, 0, 0.32);
-  stroke: rgba(255, 255, 255, 0.012);
+  fill: rgba(0, 0, 0, 0.16);
+  stroke: rgba(255, 255, 255, 0.006);
   stroke-width: 1.5;
+  opacity: 0.38;
   transition: fill 180ms ease, filter 180ms ease, opacity 180ms ease;
 }
 
 .segment-shape.on {
   fill: var(--theme-accent);
+  opacity: 1;
   filter:
-    drop-shadow(0 0 8px color-mix(in srgb, var(--theme-accent) 70%, transparent))
-    drop-shadow(0 0 22px color-mix(in srgb, var(--theme-accent) 25%, transparent));
+    drop-shadow(0 0 3px color-mix(in srgb, var(--theme-accent) 38%, transparent))
+    drop-shadow(0 0 8px color-mix(in srgb, var(--theme-accent) 9%, transparent));
 }
 
 .segment-colon-wrap {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: min(3.2vw, 38px);
+  width: min(5.4vw, 64px);
   height: min(34vw, 420px);
 }
 
 .segment-colon {
   display: grid;
   justify-items: center;
-  gap: min(4.4vh, 3rem);
+  gap: min(11vh, 7.4rem);
 }
 
 .segment-colon span {
-  width: min(2vw, 20px);
-  height: min(2vw, 20px);
+  width: min(2.8vw, 28px);
+  height: min(2.8vw, 28px);
   border-radius: 50%;
   background: var(--theme-accent);
   box-shadow:
-    0 0 18px color-mix(in srgb, var(--theme-accent) 58%, transparent),
-    0 0 42px color-mix(in srgb, var(--theme-accent) 18%, transparent);
+    0 0 8px color-mix(in srgb, var(--theme-accent) 36%, transparent),
+    0 0 18px color-mix(in srgb, var(--theme-accent) 8%, transparent);
 }
 
 .flip-preview {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: clamp(0.65rem, 1.4vw, 1.2rem);
@@ -1058,6 +1117,23 @@
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--theme-fg) 8%, transparent),
     inset 0 0 0 1px color-mix(in srgb, var(--theme-accent) 6%, transparent);
+}
+
+.flip-time-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.65rem, 1.4vw, 1.2rem);
+  width: 100%;
+}
+
+.flip-date-label {
+  font-size: clamp(0.95rem, 1.4vw, 1.3rem);
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--theme-fg) 76%, transparent);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
 }
 
 .flip-group {
@@ -1386,15 +1462,39 @@
     height: min(31vw, 160px);
   }
 
+  .segment-row--date .segment-digit {
+    width: min(2vw, 12px);
+    height: min(3.5vw, 23px);
+  }
+
+  .segment-alarm-bells {
+    gap: 0.24rem;
+  }
+
+  .segment-alarm-bell {
+    width: 2rem;
+    height: 2rem;
+  }
+
   .segment-colon-wrap {
-    width: min(4vw, 20px);
+    width: min(6.4vw, 34px);
     height: min(31vw, 160px);
+  }
+
+  .segment-row--date .segment-colon-wrap {
+    width: min(0.55vw, 3px);
+    height: min(3.5vw, 23px);
   }
 
   .segment-colon span,
   .flip-separator span {
-    width: min(2.5vw, 12px);
-    height: min(2.5vw, 12px);
+    width: min(3.2vw, 16px);
+    height: min(3.2vw, 16px);
+  }
+
+  .segment-row--date .segment-colon span {
+    width: min(0.35vw, 2px);
+    height: min(0.35vw, 2px);
   }
 
   .flip-tile {

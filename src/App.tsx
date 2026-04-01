@@ -141,8 +141,12 @@ function renderActiveDisplay(
   display: ClockDisplayDefinition,
   currentTime: Date,
   theme: ThemePalette,
-  alarmTime: string,
-  alarmEnabled: boolean,
+  alarmColors: string[],
+  analogAlarmPreviews: Array<{
+    time: string;
+    color: string;
+  }>,
+  showDate: boolean,
 ) {
   switch (display.id) {
     case 'analog':
@@ -151,16 +155,21 @@ function renderActiveDisplay(
           currentTime={currentTime}
           display={display}
           theme={theme}
-          alarmTime={alarmTime}
-          alarmEnabled={alarmEnabled}
+          alarmPreviews={analogAlarmPreviews}
+          showDate={showDate}
         />
       );
     case 'seven-segment':
       return (
-        <SevenSegmentClockCard currentTime={currentTime} display={display} />
+        <SevenSegmentClockCard
+          currentTime={currentTime}
+          display={display}
+          alarmColors={alarmColors}
+          showDate={showDate}
+        />
       );
     case 'flip':
-      return <FlipClockCard currentTime={currentTime} display={display} />;
+      return <FlipClockCard currentTime={currentTime} display={display} showDate={showDate} />;
     default:
       return null;
   }
@@ -745,6 +754,7 @@ function readStoredAlarmSettings() {
       recentRadioStationIds?: string[];
       liveAudioSource?: LiveAudioSource;
       liveRadioStationId?: string;
+      showDate?: boolean;
     };
   } catch {
     return null;
@@ -764,6 +774,7 @@ function App() {
   const storedAlarmSettings = readStoredAlarmSettings();
   const [activeDisplayId, setActiveDisplayId] = useState<ClockDisplayId>('analog');
   const [activeThemeName, setActiveThemeName] = useState(DEFAULT_THEME_NAME);
+  const [showDate, setShowDate] = useState(storedAlarmSettings?.showDate ?? false);
   const [appSignature, setAppSignature] = useState(APP_SIGNATURE_FALLBACK);
   const [alarms, setAlarms] = useState<AlarmDefinition[]>(
     normalizeStoredAlarms(
@@ -911,7 +922,10 @@ function App() {
       ),
     [liveRadioStationId, liveRadioStations, recentRadioStationIds],
   );
-  const primaryAlarmTime = alarms[0]?.time ?? '07:00';
+  const analogAlarmPreviews = useMemo(
+    () => alarms.map((alarm) => ({ time: alarm.time, color: alarm.color })),
+    [alarms],
+  );
   const liveRadioCurrentSongLabel = formatStationCurrentSong(liveRadioCurrentSong);
   const liveTransportTitle =
     liveAudioSource === 'radio'
@@ -1343,6 +1357,7 @@ function App() {
         recentRadioStationIds,
         liveAudioSource,
         liveRadioStationId,
+        showDate,
       }),
     );
   }, [
@@ -1350,6 +1365,7 @@ function App() {
     recentRadioStationIds,
     liveAudioSource,
     liveRadioStationId,
+    showDate,
   ]);
 
   useEffect(() => {
@@ -1809,6 +1825,16 @@ function App() {
                         ))}
                       </select>
                     </label>
+
+                    <label className="field-label field-label--checkbox-row" htmlFor="show-date-checkbox">
+                      <input
+                        id="show-date-checkbox"
+                        type="checkbox"
+                        checked={showDate}
+                        onChange={(event) => setShowDate(event.target.checked)}
+                      />
+                      <span>Afficher la date</span>
+                    </label>
                   </section>
                 ) : null}
 
@@ -2063,8 +2089,9 @@ function App() {
             activeDisplay,
             currentTime,
             activeTheme,
-            primaryAlarmTime,
-            alarms.length > 0,
+            alarms.map((alarm) => alarm.color),
+            analogAlarmPreviews,
+            showDate,
           )}
         </article>
       </section>

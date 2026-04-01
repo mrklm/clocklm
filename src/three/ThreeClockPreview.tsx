@@ -29,6 +29,7 @@ type AlarmMiniClock = {
   frameMaterial: MeshStandardMaterial;
   faceMaterial: MeshStandardMaterial;
   markerMaterials: MeshBasicMaterial[];
+  handMaterials: MeshStandardMaterial[];
 };
 
 function drawTextSprite(
@@ -219,14 +220,14 @@ function getDateTextColor(_theme: ThemePalette, currentTime: Date) {
 
 function getMiniClockPalette(
   theme: ThemePalette,
-  alarmEnabled: boolean,
+  accentColor?: string,
 ) {
-  if (alarmEnabled) {
+  if (accentColor) {
     return {
       frame: theme.PANEL,
       face: theme.BG,
       marks: theme.FG,
-      hands: theme.ACCENT,
+      hands: accentColor,
       handOutline: theme.BG,
     };
   }
@@ -245,6 +246,9 @@ function applyMiniClockPalette(miniClock: AlarmMiniClock, palette: ReturnType<ty
   miniClock.faceMaterial.color.set(palette.face);
   miniClock.markerMaterials.forEach((material) => {
     material.color.set(palette.marks);
+  });
+  miniClock.handMaterials.forEach((material) => {
+    material.color.set(palette.hands);
   });
 }
 
@@ -327,8 +331,87 @@ function getAlarmPreviewDate(alarmTime: string) {
   return previewDate;
 }
 
-function createAlarmMiniClock(theme: ThemePalette, alarmTime: string, alarmEnabled: boolean) {
-  const miniTheme = getMiniClockPalette(theme, alarmEnabled);
+const MINI_CLOCK_RADIUS = Math.hypot(0.31, 0.24);
+const MINI_CLOCK_ANCHOR_ANGLE = Math.atan2(0.31, -0.24);
+
+function getAngularDistance(angleA: number, angleB: number) {
+  const delta = Math.abs(angleA - angleB) % (Math.PI * 2);
+  return Math.min(delta, Math.PI * 2 - delta);
+}
+
+function isAngleBlocked(angle: number, showDate: boolean) {
+  if (!showDate) {
+    return false;
+  }
+
+  const topCenterAngle = 0;
+  const blockedHalfWidth = 0.52;
+  return getAngularDistance(angle, topCenterAngle) < blockedHalfWidth;
+}
+
+function getMiniClockAngles(total: number, showDate: boolean) {
+  if (total <= 0) {
+    return [];
+  }
+
+  const angles = [MINI_CLOCK_ANCHOR_ANGLE];
+  const candidates = Array.from({ length: 180 }, (_, index) => (index / 180) * Math.PI * 2).filter(
+    (angle) => !isAngleBlocked(angle, showDate),
+  );
+
+  while (angles.length < total) {
+    let bestAngle = MINI_CLOCK_ANCHOR_ANGLE;
+    let bestDistance = -1;
+
+    candidates.forEach((candidateAngle) => {
+      if (angles.some((angle) => getAngularDistance(angle, candidateAngle) < 0.08)) {
+        return;
+      }
+
+      const nearestNeighborDistance = Math.min(
+        ...angles.map((angle) => getAngularDistance(angle, candidateAngle)),
+      );
+
+      if (nearestNeighborDistance > bestDistance) {
+        bestDistance = nearestNeighborDistance;
+        bestAngle = candidateAngle;
+      }
+    });
+
+    angles.push(bestAngle);
+  }
+
+  return angles;
+}
+
+function getMiniClockScale(total: number) {
+  if (total <= 1) {
+    return 1;
+  }
+
+  if (total === 2) {
+    return 0.9;
+  }
+
+  if (total === 3) {
+    return 0.78;
+  }
+
+  if (total === 4) {
+    return 0.68;
+  }
+
+  return 0.6;
+}
+
+function createAlarmMiniClock(
+  theme: ThemePalette,
+  alarmTime: string,
+  alarmColor: string | undefined,
+  angle: number,
+  scale: number,
+) {
+  const miniTheme = getMiniClockPalette(theme, alarmColor);
 
   const frameMaterial = new MeshStandardMaterial({
     color: miniTheme.frame,
@@ -363,9 +446,13 @@ function createAlarmMiniClock(theme: ThemePalette, alarmTime: string, alarmEnabl
   const handOutline = miniTheme.handOutline;
   const hourHand = createHand(0.012, 0.068, 0.01, miniTheme.hands, handOutline);
   const minuteHand = createHand(0.008, 0.098, 0.008, miniTheme.hands, handOutline);
+  const handMaterials = [hourHand.children[1], minuteHand.children[1]]
+    .map((child) => (child instanceof Mesh ? child.material : null))
+    .filter((material): material is MeshStandardMaterial => material instanceof MeshStandardMaterial);
 
   const group = new Group();
-  group.position.set(0.31, -0.24, 0.03);
+  group.position.set(Math.sin(angle) * MINI_CLOCK_RADIUS, Math.cos(angle) * MINI_CLOCK_RADIUS, 0.03);
+  group.scale.setScalar(scale);
   group.add(frame, face, markers, hourHand, minuteHand);
 
   const previewDate = getAlarmPreviewDate(alarmTime);
@@ -385,6 +472,7 @@ function createAlarmMiniClock(theme: ThemePalette, alarmTime: string, alarmEnabl
       frameMaterial,
       faceMaterial,
       markerMaterials,
+      handMaterials,
     },
   };
 }
@@ -393,8 +481,8 @@ function createClockScene(
   scene: Scene,
   theme: ThemePalette,
   currentTime: Date,
-  alarmTime: string,
-  alarmEnabled: boolean,
+  alarmPreviews: Array<{ time: string; color: string }>,
+  showDate: boolean,
 ) {
   const frame = new Mesh(
     new RingGeometry(0.91, 0.919, 96),
@@ -457,10 +545,16 @@ function createClockScene(
     getDateTextColor(theme, currentTime),
     theme.ACCENT,
   );
-  const { group: alarmMiniClockGroup, miniClock } = createAlarmMiniClock(
-    theme,
-    alarmTime,
-    alarmEnabled,
+  const miniClockAngles = getMiniClockAngles(alarmPreviews.length, showDate);
+  const miniClockScale = getMiniClockScale(alarmPreviews.length);
+  const alarmMiniClocks = alarmPreviews.map((alarmPreview, index) =>
+    createAlarmMiniClock(
+      theme,
+      alarmPreview.time,
+      alarmPreview.color,
+      miniClockAngles[index] ?? MINI_CLOCK_ANCHOR_ANGLE,
+      miniClockScale,
+    ),
   );
 
   const group = new Group();
@@ -468,10 +562,18 @@ function createClockScene(
   if (dateSprite) {
     group.add(dateSprite);
   }
-  group.add(alarmMiniClockGroup);
+  alarmMiniClocks.forEach(({ group: alarmMiniClockGroup }) => {
+    group.add(alarmMiniClockGroup);
+  });
   scene.add(group);
 
-  return { hourHand, minuteHand, secondHand, dateSprite, alarmMiniClock: miniClock };
+  return {
+    hourHand,
+    minuteHand,
+    secondHand,
+    dateSprite,
+    alarmMiniClocks: alarmMiniClocks.map(({ miniClock }) => miniClock),
+  };
 }
 
 function getClockRotation(turnFraction: number) {
@@ -501,15 +603,18 @@ function updateClockHands(
 type ThreeClockPreviewProps = {
   currentTime: Date;
   theme: ThemePalette;
-  alarmTime: string;
-  alarmEnabled: boolean;
+  alarmPreviews?: Array<{
+    time: string;
+    color: string;
+  }>;
+  showDate?: boolean;
 };
 
 export function ThreeClockPreview({
   currentTime,
   theme,
-  alarmTime,
-  alarmEnabled,
+  alarmPreviews = [],
+  showDate = false,
 }: ThreeClockPreviewProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const hourHandRef = useRef<Group | null>(null);
@@ -519,7 +624,7 @@ export function ThreeClockPreview({
   const overlayMinuteHandRef = useRef<Group | null>(null);
   const overlaySecondHandRef = useRef<Group | null>(null);
   const dateSpriteRef = useRef<Sprite | null>(null);
-  const alarmMiniClockRef = useRef<AlarmMiniClock | null>(null);
+  const alarmMiniClocksRef = useRef<AlarmMiniClock[]>([]);
 
   useEffect(() => {
     const mountNode = mountRef.current;
@@ -541,20 +646,28 @@ export function ThreeClockPreview({
     const light = new AmbientLight('#ffffff', 3.1);
     scene.add(light);
 
-    const { hourHand, minuteHand, secondHand, dateSprite, alarmMiniClock } = createClockScene(
+    const { hourHand, minuteHand, secondHand, dateSprite, alarmMiniClocks } = createClockScene(
       scene,
       theme,
       currentTime,
-      alarmTime,
-      alarmEnabled,
+      alarmPreviews,
+      showDate,
     );
     hourHandRef.current = hourHand;
     minuteHandRef.current = minuteHand;
     secondHandRef.current = secondHand;
     dateSpriteRef.current = dateSprite ?? null;
-    alarmMiniClockRef.current = alarmMiniClock;
+    if (dateSpriteRef.current) {
+      dateSpriteRef.current.visible = showDate;
+    }
+    alarmMiniClocksRef.current = alarmMiniClocks;
     updateClockHands(hourHand, minuteHand, secondHand, currentTime);
-    applyMiniClockPalette(alarmMiniClock, getMiniClockPalette(theme, alarmEnabled));
+    alarmMiniClocks.forEach((miniClock, index) => {
+      applyMiniClockPalette(
+        miniClock,
+        getMiniClockPalette(theme, alarmPreviews[index]?.color),
+      );
+    });
 
     const clippingPlanes = createCircularClippingPlanes(0.31, -0.24, 0.152);
     const overlayFill = theme.ACCENT;
@@ -624,9 +737,9 @@ export function ThreeClockPreview({
       overlayMinuteHandRef.current = null;
       overlaySecondHandRef.current = null;
       dateSpriteRef.current = null;
-      alarmMiniClockRef.current = null;
+      alarmMiniClocksRef.current = [];
     };
-  }, [theme, alarmTime, alarmEnabled]);
+  }, [theme, alarmPreviews, showDate]);
 
   useEffect(() => {
     if (!hourHandRef.current || !minuteHandRef.current || !secondHandRef.current) {
@@ -673,20 +786,26 @@ export function ThreeClockPreview({
   }, [currentTime, theme]);
 
   useEffect(() => {
-    const miniClock = alarmMiniClockRef.current;
-    if (!miniClock) {
+    if (dateSpriteRef.current) {
+      dateSpriteRef.current.visible = showDate;
+    }
+  }, [showDate]);
+
+  useEffect(() => {
+    if (alarmMiniClocksRef.current.length === 0) {
       return;
     }
+    alarmMiniClocksRef.current.forEach((miniClock, index) => {
+      const previewDate = getAlarmPreviewDate(alarmPreviews[index]?.time ?? '00:00');
+      const hours = previewDate.getHours() % 12;
+      const minutes = previewDate.getMinutes();
+      const minutesProgress = minutes / 60;
+      const hoursProgress = (hours + minutesProgress) / 12;
 
-    const previewDate = getAlarmPreviewDate(alarmTime);
-    const hours = previewDate.getHours() % 12;
-    const minutes = previewDate.getMinutes();
-    const minutesProgress = minutes / 60;
-    const hoursProgress = (hours + minutesProgress) / 12;
-
-    miniClock.hourHand.rotation.z = getClockRotation(hoursProgress);
-    miniClock.minuteHand.rotation.z = getClockRotation(minutesProgress);
-  }, [alarmTime, alarmEnabled]);
+      miniClock.hourHand.rotation.z = getClockRotation(hoursProgress);
+      miniClock.minuteHand.rotation.z = getClockRotation(minutesProgress);
+    });
+  }, [alarmPreviews]);
 
   return <div className="three-preview" ref={mountRef} />;
 }

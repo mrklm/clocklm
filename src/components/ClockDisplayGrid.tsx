@@ -21,12 +21,11 @@ function renderClockCard(
           currentTime={currentTime}
           display={display}
           theme={theme}
-          alarmTime="07:00"
-          alarmEnabled={false}
+          alarmPreviews={[]}
         />
       );
     case 'seven-segment':
-      return <SevenSegmentClockCard currentTime={currentTime} display={display} />;
+      return <SevenSegmentClockCard currentTime={currentTime} display={display} showDate />;
     case 'flip':
       return <FlipClockCard currentTime={currentTime} display={display} />;
     default:

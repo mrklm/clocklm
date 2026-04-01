@@ -4,6 +4,7 @@ import type { ClockDisplayDefinition } from '../../../types/clock';
 type FlipClockCardProps = {
   currentTime: Date;
   display: ClockDisplayDefinition;
+  showDate?: boolean;
 };
 
 type FlipDigitTileProps = {
@@ -67,7 +68,11 @@ function FlipDigitTile({ value }: FlipDigitTileProps) {
   );
 }
 
-export function FlipClockCard({ currentTime, display }: FlipClockCardProps) {
+export function FlipClockCard({
+  currentTime,
+  display,
+  showDate = false,
+}: FlipClockCardProps) {
   const [hours, minutes] = currentTime
     .toLocaleTimeString('fr-FR', {
       hour: '2-digit',
@@ -75,6 +80,11 @@ export function FlipClockCard({ currentTime, display }: FlipClockCardProps) {
       hour12: false,
     })
     .split(':');
+  const dateLabel = new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(currentTime);
 
   return (
     <>
@@ -84,22 +94,25 @@ export function FlipClockCard({ currentTime, display }: FlipClockCardProps) {
         <p>{display.summary}</p>
       </div>
       <div className="flip-preview" aria-hidden="true">
-        <div className="flip-group">
-          {hours.split('').map((char, index) => (
-            <FlipDigitTile key={`hours-${index}`} value={char} />
-          ))}
-        </div>
+        <div className="flip-time-row">
+          <div className="flip-group">
+            {hours.split('').map((char, index) => (
+              <FlipDigitTile key={`hours-${index}`} value={char} />
+            ))}
+          </div>
 
-        <div className="flip-separator">
-          <span />
-          <span />
-        </div>
+          <div className="flip-separator">
+            <span />
+            <span />
+          </div>
 
-        <div className="flip-group">
-          {minutes.split('').map((char, index) => (
-            <FlipDigitTile key={`minutes-${index}`} value={char} />
-          ))}
+          <div className="flip-group">
+            {minutes.split('').map((char, index) => (
+              <FlipDigitTile key={`minutes-${index}`} value={char} />
+            ))}
+          </div>
         </div>
+        {showDate ? <div className="flip-date-label">{dateLabel}</div> : null}
       </div>
     </>
   );

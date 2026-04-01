@@ -6,16 +6,19 @@ type AnalogClockCardProps = {
   currentTime: Date;
   display: ClockDisplayDefinition;
   theme: ThemePalette;
-  alarmTime: string;
-  alarmEnabled: boolean;
+  alarmPreviews?: Array<{
+    time: string;
+    color: string;
+  }>;
+  showDate?: boolean;
 };
 
 export function AnalogClockCard({
   currentTime,
   display,
   theme,
-  alarmTime,
-  alarmEnabled,
+  alarmPreviews = [],
+  showDate = false,
 }: AnalogClockCardProps) {
   return (
     <>
@@ -27,8 +30,8 @@ export function AnalogClockCard({
       <ThreeClockPreview
         currentTime={currentTime}
         theme={theme}
-        alarmTime={alarmTime}
-        alarmEnabled={alarmEnabled}
+        alarmPreviews={alarmPreviews}
+        showDate={showDate}
       />
     </>
   );
