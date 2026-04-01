@@ -18,10 +18,13 @@ jobs:
         include:
           - platform: ubuntu-22.04
             args: ''
+            asset_prefix: Clocklm_linux
           - platform: windows-latest
             args: ''
-          - platform: macos-latest
-            args: ''
+            asset_prefix: Clocklm_windows
+          - platform: macos-13
+            args: '--target x86_64-apple-darwin'
+            asset_prefix: Clocklm_macos_x64
 
     runs-on: ${{ matrix.platform }}
 
@@ -61,4 +64,4 @@ jobs:
           prerelease: false
           generateReleaseNotes: true
           args: ${{ matrix.args }}
-          assetNamePattern: 'Clocklm_[platform][ext]'
+          assetNamePattern: '${{ matrix.asset_prefix }}[ext]'

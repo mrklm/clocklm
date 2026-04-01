@@ -4,6 +4,13 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
+## [1.0.16] - 2026-04-1
+
+ ### Modifié
+
+  - Le build macOS propose mainteant un fichier de type intel
+  - Ajout de captures d'écran dans le readme
+
 ## [1.0.15] - 2026-03-31
 
  ### Ajouté
