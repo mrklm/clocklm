@@ -5,12 +5,27 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.24] - 2026-04-2
+
+ ### Ajouté
+
+ - Splash screen pour la version mobile
+
+ ### Modifié
+
+ - Modif de l'icone du programme
+ - Fond clair sur les themes clair en mode seven seg
+ - Lecture stream ameliorée 
+ - lecteure audi en mode local ignore les fichiers non audio
+ - Réctification affichage horloge analogique en mode mobile
+
+
 ## [1.0.23] - 2026-04-2
 
  ### Modifié
 
  - Affichage analogique sous macOS
- - Correction N°3 ecrans blanc page web
+ - Correction N°3 ecran blanc page web
 
 ## [1.0.22] - 2026-04-2
 

@@ -20,6 +20,7 @@ import type { ClockDisplayDefinition, ClockDisplayId } from './types/clock';
 import type { ThemePalette } from './types/theme';
 import optionsIconUrl from '../assets/options.svg';
 import pinceauIconUrl from '../assets/pinceau.svg';
+import clocklmIconUrl from '../assets/clocklm.png';
 import packageJson from '../package.json';
 import './styles/app.css';
 
@@ -196,6 +197,67 @@ function formatAlarmMinuteKey(currentTime: Date) {
   return `${year}-${month}-${day}-${hours}:${minutes}`;
 }
 
+function isProbablyMobileDevice() {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const mobileUserAgent = /Android|iPhone|iPad|iPod|Mobile/i.test(window.navigator.userAgent);
+  const smallTouchViewport = window.matchMedia('(max-width: 820px) and (pointer: coarse)').matches;
+
+  return mobileUserAgent || smallTouchViewport;
+}
+
+const AUDIO_FILE_EXTENSIONS = new Set([
+  'aac',
+  'aif',
+  'aiff',
+  'alac',
+  'flac',
+  'm4a',
+  'mp3',
+  'ogg',
+  'oga',
+  'opus',
+  'wav',
+  'webm',
+  'wma',
+]);
+
+function getFilePathParts(file: File) {
+  const relativePath =
+    'webkitRelativePath' in file && file.webkitRelativePath
+      ? file.webkitRelativePath
+      : file.name;
+
+  return relativePath.split('/').filter(Boolean);
+}
+
+function isIgnoredLocalFile(file: File) {
+  const pathParts = getFilePathParts(file);
+
+  return pathParts.some((part) =>
+    part === '.DS_Store'
+    || part === '__MACOSX'
+    || part.startsWith('._')
+    || part === 'Thumbs.db',
+  );
+}
+
+function hasSupportedAudioExtension(file: File) {
+  const fileName = file.name.trim().toLowerCase();
+  const extension = fileName.includes('.') ? fileName.split('.').pop() ?? '' : '';
+  return AUDIO_FILE_EXTENSIONS.has(extension);
+}
+
+function isSupportedLocalAudioFile(file: File) {
+  if (isIgnoredLocalFile(file)) {
+    return false;
+  }
+
+  return file.type.startsWith('audio/') || hasSupportedAudioExtension(file);
+}
+
 async function resolveStreamUrl(sourceUrl: string) {
   const trimmedUrl = sourceUrl.trim();
 
@@ -226,6 +288,64 @@ async function resolveStreamUrl(sourceUrl: string) {
   }
 
   return streamLine.replace(/^File\d+=/i, '');
+}
+
+function getStationStreamCandidates(station: LautFmStation) {
+  const trimmedUrl = station.url.trim();
+  if (!trimmedUrl) {
+    return [];
+  }
+
+  const candidates = [trimmedUrl];
+
+  if (station.provider === 'lautfm' && !/\.(m3u|pls)($|\?)/i.test(trimmedUrl)) {
+    candidates.push(`${trimmedUrl}.m3u`, `${trimmedUrl}.pls`);
+  }
+
+  return Array.from(new Set(candidates));
+}
+
+async function prepareStationStreamUrls(station: LautFmStation) {
+  const resolvedUrls = await Promise.all(
+    getStationStreamCandidates(station).map(async (candidateUrl) => {
+      try {
+        return await resolveStreamUrl(candidateUrl);
+      } catch {
+        return null;
+      }
+    }),
+  );
+
+  return resolvedUrls.filter((url): url is string => Boolean(url));
+}
+
+async function playAudioFromCandidates(
+  candidateUrls: string[],
+  options?: {
+    preload?: HTMLMediaElement['preload'];
+    loop?: boolean;
+  },
+) {
+  let lastError: unknown = null;
+
+  for (const candidateUrl of candidateUrls) {
+    const audio = new Audio();
+    audio.preload = options?.preload ?? 'none';
+    audio.loop = options?.loop ?? false;
+    audio.src = candidateUrl;
+
+    try {
+      await audio.play();
+      return audio;
+    } catch (error) {
+      lastError = error;
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+    }
+  }
+
+  throw lastError ?? new Error('audio_playback_failed');
 }
 
 function normalizeLautFmStation(station: {
@@ -779,6 +899,7 @@ function App() {
     storedAlarmSettings?.use24HourFormat ?? true,
   );
   const [appSignature, setAppSignature] = useState(APP_SIGNATURE_FALLBACK);
+  const [isMobileSplashVisible, setIsMobileSplashVisible] = useState(isProbablyMobileDevice);
   const [alarms, setAlarms] = useState<AlarmDefinition[]>(
     normalizeStoredAlarms(
       storedAlarmSettings?.alarms,
@@ -834,6 +955,21 @@ function App() {
   const liveRadioStageComboboxRef = useRef<HTMLDetailsElement | null>(null);
   const liveRadioOptionsComboboxRef = useRef<HTMLDetailsElement | null>(null);
   const deferredLiveRadioSearch = useDeferredValue(liveRadioSearch);
+
+  useEffect(() => {
+    if (!isProbablyMobileDevice()) {
+      setIsMobileSplashVisible(false);
+      return;
+    }
+
+    const hideTimer = window.setTimeout(() => {
+      setIsMobileSplashVisible(false);
+    }, 1800);
+
+    return () => {
+      window.clearTimeout(hideTimer);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isTauri()) {
@@ -1072,14 +1208,23 @@ function App() {
         findStationById(DEFAULT_LAUT_FM_STATIONS, alarm.radioStationId) ??
         DEFAULT_LAUT_FM_STATIONS[0];
 
-      if (!selectedStation.url) {
+      const candidateUrls = await prepareStationStreamUrls(selectedStation);
+
+      if (candidateUrls.length === 0) {
         setAlarmPlaybackState('ringing');
         setAlarmStatusMessage(`${triggerLabel} Aucune radio n'est selectionnee.`);
         return;
       }
 
       try {
-        sourceUrl = await resolveStreamUrl(selectedStation.url);
+        const audio = await playAudioFromCandidates(candidateUrls, {
+          preload: 'auto',
+          loop: false,
+        });
+        alarmAudioRef.current = audio;
+        setAlarmPlaybackState('ringing');
+        setAlarmStatusMessage(triggerLabel);
+        return;
       } catch {
         setAlarmPlaybackState('ringing');
         setAlarmStatusMessage(`${triggerLabel} Impossible de charger le flux radio.`);
@@ -1178,11 +1323,11 @@ function App() {
     stopAlarmPlayback();
 
     try {
-      const sourceUrl = await resolveStreamUrl(selectedLiveRadioStation.url);
-      const audio = new Audio(sourceUrl);
-      audio.preload = 'none';
+      const candidateUrls = await prepareStationStreamUrls(selectedLiveRadioStation);
+      const audio = await playAudioFromCandidates(candidateUrls, {
+        preload: 'none',
+      });
       liveRadioAudioRef.current = audio;
-      await audio.play();
       setLiveRadioPlaybackState('playing');
     } catch {
       stopLiveRadioPlayback();
@@ -1216,9 +1361,25 @@ function App() {
     stopAlarmPlayback();
 
     try {
+      const selectedTrack = liveDirectoryFiles[trackIndex];
+      if (!selectedTrack || !isSupportedLocalAudioFile(selectedTrack)) {
+        const nextIndex = getNextDirectoryTrackIndex(
+          trackIndex,
+          'next',
+          liveDirectoryPlaybackModeRef.current,
+        );
+        if (nextIndex === null || nextIndex === trackIndex) {
+          stopLiveRadioPlayback();
+          setLiveRadioPlaybackState('error');
+          return;
+        }
+        void playLiveDirectoryTrack(nextIndex);
+        return;
+      }
+
       const objectUrl =
         liveDirectoryObjectUrlsRef.current[trackIndex] ??
-        URL.createObjectURL(liveDirectoryFiles[trackIndex]);
+        URL.createObjectURL(selectedTrack);
       liveDirectoryObjectUrlsRef.current[trackIndex] = objectUrl;
       liveDirectoryTrackIndexRef.current = trackIndex;
 
@@ -1236,8 +1397,21 @@ function App() {
         }
         void playLiveDirectoryTrack(nextIndex);
       };
+      audio.onerror = () => {
+        const nextIndex = getNextDirectoryTrackIndex(
+          trackIndex,
+          'next',
+          liveDirectoryPlaybackModeRef.current,
+        );
+        if (nextIndex === null || nextIndex === trackIndex) {
+          stopLiveRadioPlayback();
+          setLiveRadioPlaybackState('error');
+          return;
+        }
+        void playLiveDirectoryTrack(nextIndex);
+      };
       liveRadioAudioRef.current = audio;
-      setLiveDirectoryTrackLabel(liveDirectoryFiles[trackIndex]?.name ?? liveDirectoryName);
+      setLiveDirectoryTrackLabel(selectedTrack.name || liveDirectoryName);
       await audio.play();
       setLiveRadioPlaybackState('playing');
     } catch {
@@ -1270,7 +1444,7 @@ function App() {
     stopLiveRadioPlayback();
 
     const selectedFiles = Array.from(files ?? [])
-      .filter((file) => file.type.startsWith('audio/'))
+      .filter(isSupportedLocalAudioFile)
       .sort((left, right) => {
         const leftPath =
           'webkitRelativePath' in left && left.webkitRelativePath
@@ -1568,6 +1742,19 @@ function App() {
       appSignature={appSignature}
       appSignatureHref={APP_REPOSITORY_URL}
     >
+      {isMobileSplashVisible ? (
+        <div className="mobile-splash" role="status" aria-live="polite">
+          <div className="mobile-splash__card">
+            <img
+              className="mobile-splash__logo"
+              src={clocklmIconUrl}
+              alt="Clocklm"
+            />
+            <p className="mobile-splash__brand">Clock.l.m</p>
+            <p className="mobile-splash__version">{appSignature}</p>
+          </div>
+        </div>
+      ) : null}
       <input
         ref={liveDirectoryInputRef}
         className="sr-only"

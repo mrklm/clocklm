@@ -4,6 +4,59 @@
   padding: 0;
   min-height: 100vh;
   color: var(--theme-fg, #eaeaea);
+  position: relative;
+}
+
+.mobile-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background:
+    radial-gradient(circle at 50% 22%, color-mix(in srgb, var(--theme-accent) 28%, transparent), transparent 32%),
+    linear-gradient(180deg, var(--theme-bg), color-mix(in srgb, var(--theme-panel) 78%, #000000));
+}
+
+.mobile-splash__card {
+  display: grid;
+  justify-items: center;
+  gap: 0.9rem;
+  width: min(88vw, 24rem);
+  padding: 1.9rem 1.6rem 1.7rem;
+  border-radius: 2rem;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--theme-panel) 86%, white 6%), color-mix(in srgb, var(--theme-bg) 92%, black 8%));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 8%, transparent),
+    0 1.4rem 3rem color-mix(in srgb, black 34%, transparent);
+}
+
+.mobile-splash__logo {
+  width: min(42vw, 9rem);
+  aspect-ratio: 1;
+  object-fit: contain;
+  filter: drop-shadow(0 0.85rem 1.4rem color-mix(in srgb, black 26%, transparent));
+}
+
+.mobile-splash__brand,
+.mobile-splash__version {
+  margin: 0;
+}
+
+.mobile-splash__brand {
+  font-size: clamp(1.7rem, 6vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mobile-splash__version {
+  color: color-mix(in srgb, var(--theme-fg) 80%, transparent);
+  font-size: 0.95rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .app-kicker,
@@ -65,7 +118,7 @@
   bottom: 1rem;
   left: 1rem;
   border: 0.4rem solid var(--alarm-visual-color, #ff2a2a);
-  border-radius: 1.8rem;
+  border-radius: 0;
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.08),
     0 0 18px color-mix(in srgb, var(--alarm-visual-color, #ff2a2a) 45%, transparent),
@@ -998,6 +1051,13 @@
   border: none;
 }
 
+.clock-layout[data-theme-family='light'] .display-stage-card[data-display-id='analog'],
+.clock-layout[data-theme-family='light'] .three-preview {
+  background:
+    radial-gradient(circle at top, color-mix(in srgb, var(--theme-accent) 16%, transparent), transparent 30%),
+    linear-gradient(180deg, var(--theme-bg), color-mix(in srgb, var(--theme-panel) 86%, white 14%));
+}
+
 .three-preview--fallback {
   display: grid;
   place-items: center;
@@ -1009,6 +1069,224 @@
     linear-gradient(180deg, color-mix(in srgb, var(--theme-panel) 58%, transparent), color-mix(in srgb, var(--theme-bg) 88%, #000000));
 }
 
+.analog-fallback {
+  --analog-fallback-bg: var(--theme-bg);
+  --analog-fallback-panel: var(--theme-panel);
+  --analog-fallback-fg: var(--theme-fg);
+  --analog-fallback-accent: var(--theme-accent);
+}
+
+.analog-fallback__stage {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.analog-fallback__clock {
+  position: relative;
+  width: min(86vw, 86dvh, 42rem);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--analog-fallback-bg) 88%, white 12%), transparent 56%),
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--analog-fallback-panel) 68%, black 32%), var(--analog-fallback-bg) 72%);
+  box-shadow:
+    inset 0 0 0 0.38rem color-mix(in srgb, var(--analog-fallback-accent) 92%, white 8%),
+    inset 0 0 0 1.2rem color-mix(in srgb, var(--analog-fallback-bg) 70%, black 30%),
+    0 1.4rem 3rem color-mix(in srgb, black 30%, transparent);
+}
+
+.analog-fallback__face {
+  position: absolute;
+  inset: 4.4%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 35%, color-mix(in srgb, white 10%, transparent), transparent 34%),
+    linear-gradient(180deg, color-mix(in srgb, var(--analog-fallback-panel) 55%, white 4%), var(--analog-fallback-bg));
+}
+
+.analog-fallback__markers,
+.analog-fallback__labels {
+  position: absolute;
+  inset: 0;
+}
+
+.analog-fallback__marker,
+.analog-fallback__label,
+.analog-fallback__hand,
+.analog-fallback__mini-hand {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform-origin: 50% 100%;
+}
+
+.analog-fallback__marker {
+  width: 0.18rem;
+  height: 8.4%;
+  margin-left: -0.09rem;
+  margin-top: -42%;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--analog-fallback-fg) 72%, transparent);
+}
+
+.analog-fallback__marker--hour {
+  width: 0.42rem;
+  height: 11%;
+  margin-left: -0.21rem;
+  margin-top: -45%;
+  background: var(--analog-fallback-fg);
+}
+
+.analog-fallback__label {
+  width: 2.4rem;
+  height: 42%;
+  margin-left: -1.2rem;
+  margin-top: -42%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  color: var(--analog-fallback-fg);
+  font-size: clamp(1rem, 2.2vw, 1.55rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.analog-fallback__date {
+  position: absolute;
+  left: 50%;
+  top: 31%;
+  transform: translateX(-50%);
+  display: grid;
+  gap: 0.02rem;
+  min-width: 9.2rem;
+  padding: 0.55rem 0.9rem 0.6rem;
+  border-radius: 1rem;
+  text-align: center;
+  background: color-mix(in srgb, var(--analog-fallback-accent) 22%, var(--analog-fallback-bg));
+  color: white;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, white 12%, transparent),
+    0 0.75rem 1.4rem color-mix(in srgb, black 22%, transparent);
+}
+
+.analog-fallback__date span:first-child,
+.analog-fallback__date span:last-child {
+  font-size: clamp(0.62rem, 1.4vw, 0.86rem);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.analog-fallback__date span:nth-child(2) {
+  font-size: clamp(1.45rem, 3.6vw, 2.4rem);
+  font-weight: 800;
+  line-height: 0.95;
+}
+
+.analog-fallback__hand {
+  bottom: 50%;
+  border-radius: 999px;
+  background: var(--analog-fallback-accent);
+  box-shadow: 0 0 0 0.16rem color-mix(in srgb, var(--analog-fallback-bg) 92%, transparent);
+}
+
+.analog-fallback__hand--hour {
+  width: 0.9rem;
+  height: 24%;
+  margin-left: -0.45rem;
+}
+
+.analog-fallback__hand--minute {
+  width: 0.62rem;
+  height: 34%;
+  margin-left: -0.31rem;
+}
+
+.analog-fallback__hand--second {
+  width: 0.18rem;
+  height: 40%;
+  margin-left: -0.09rem;
+  background: color-mix(in srgb, white 85%, var(--analog-fallback-accent));
+  box-shadow: none;
+}
+
+.analog-fallback__center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1.15rem;
+  height: 1.15rem;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--analog-fallback-accent) 82%, white 18%);
+  box-shadow:
+    0 0 0 0.26rem var(--analog-fallback-bg),
+    0 0 0 0.38rem color-mix(in srgb, var(--analog-fallback-fg) 26%, transparent);
+}
+
+.analog-fallback__mini {
+  position: absolute;
+  width: 4.5rem;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 40%, color-mix(in srgb, white 10%, transparent), transparent 40%),
+    linear-gradient(180deg, color-mix(in srgb, var(--analog-fallback-panel) 66%, white 4%), var(--analog-fallback-bg));
+  box-shadow:
+    inset 0 0 0 0.18rem color-mix(in srgb, var(--analog-fallback-mini-accent) 82%, white 18%),
+    0 0.5rem 1rem color-mix(in srgb, black 22%, transparent);
+}
+
+.analog-fallback__mini-hand {
+  bottom: 50%;
+  border-radius: 999px;
+  background: var(--analog-fallback-mini-accent);
+}
+
+.analog-fallback__mini-hand--hour {
+  width: 0.3rem;
+  height: 24%;
+  margin-left: -0.15rem;
+}
+
+.analog-fallback__mini-hand--minute {
+  width: 0.18rem;
+  height: 34%;
+  margin-left: -0.09rem;
+}
+
+.analog-fallback__mini-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0.5rem;
+  height: 0.5rem;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--analog-fallback-mini-accent) 82%, white 18%);
+}
+
+@media (max-width: 720px) {
+  .three-preview--fallback {
+    padding: 2rem 1rem 1.2rem;
+  }
+
+  .analog-fallback__clock {
+    width: min(84vw, 78dvh);
+  }
+
+  .analog-fallback__mini {
+    width: 3.35rem;
+  }
+
+  .analog-fallback__date {
+    min-width: 7.3rem;
+    padding: 0.45rem 0.65rem 0.5rem;
+  }
+}
+
 .segment-preview {
   display: flex;
   flex-direction: column;
@@ -1017,11 +1295,20 @@
   gap: clamp(0.8rem, 2vh, 1.5rem);
   min-height: calc(100vh - 74px);
   padding: clamp(0.35rem, 1vh, 0.85rem);
-  border-radius: 22px;
+  border-radius: 0;
   background: linear-gradient(180deg, #050505 0%, #090909 45%, #030303 100%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     inset 0 -24px 40px rgba(0, 0, 0, 0.4);
+}
+
+.clock-layout[data-theme-family='light'] .segment-preview {
+  background:
+    radial-gradient(circle at 50% 12%, color-mix(in srgb, var(--theme-accent) 12%, transparent), transparent 34%),
+    linear-gradient(180deg, color-mix(in srgb, white 72%, var(--theme-panel)) 0%, color-mix(in srgb, white 56%, var(--theme-bg)) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 0 -20px 32px color-mix(in srgb, var(--theme-panel) 12%, transparent);
 }
 
 .segment-row {
@@ -1092,7 +1379,7 @@
   position: relative;
   width: min(18vw, 220px);
   height: min(34vw, 420px);
-  border-radius: clamp(0.9rem, 2vw, 1.6rem);
+  border-radius: 0;
   background: transparent;
   box-shadow: none;
 }
@@ -1153,7 +1440,7 @@
   gap: clamp(0.12rem, 0.35vw, 0.28rem);
   min-height: calc(100vh - 74px);
   padding: clamp(0.45rem, 1vw, 0.9rem);
-  border-radius: 26px;
+  border-radius: 0;
   border: 1px solid color-mix(in srgb, var(--theme-accent) 12%, rgba(0, 0, 0, 0.42));
   background:
     radial-gradient(circle at 50% -10%, rgba(255, 255, 255, 0.035), transparent 28%),
@@ -1182,7 +1469,7 @@
     clamp(2.5rem, 3.8vw, 3.8rem)
     clamp(0.45rem, 0.9vw, 0.8rem)
     clamp(2.5rem, 3.8vw, 3.8rem);
-  border-radius: 20px;
+  border-radius: 0;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 14%),
     linear-gradient(
@@ -1212,7 +1499,7 @@
   width: min(92vw, 1230px);
   gap: clamp(0.18rem, 0.45vw, 0.38rem);
   padding: clamp(0.32rem, 0.7vw, 0.55rem) clamp(0.5rem, 1vw, 0.8rem);
-  border-radius: 14px;
+  border-radius: 0;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 14%),
     linear-gradient(
@@ -1234,7 +1521,7 @@
 .flip-date-row .flip-tile {
   width: min(6.3vw, 63px);
   height: min(8.7vw, 87px);
-  border-radius: 8px;
+  border-radius: 0;
 }
 
 .flip-date-row .flip-static-digit,
@@ -1299,7 +1586,7 @@
   position: relative;
   width: min(23.25vw, 255px);
   height: min(30.75vw, 322px);
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 14%),

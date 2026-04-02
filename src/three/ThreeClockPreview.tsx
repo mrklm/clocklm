@@ -21,6 +21,7 @@ import {
   BoxGeometry,
   LinearFilter,
 } from 'three';
+import { AnalogClockFallback } from '../features/clocks/components/AnalogClockFallback';
 import type { ThemePalette } from '../types/theme';
 
 type AlarmMiniClock = {
@@ -618,6 +619,17 @@ type ThreeClockPreviewProps = {
   showDate?: boolean;
 };
 
+function getResponsiveCameraDistance(aspect: number, showDate: boolean) {
+  const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 1;
+  const verticalHalfSize = showDate ? 1.08 : 0.98;
+  const horizontalHalfSize = 1.02;
+  const halfFovRadians = (31 * Math.PI) / 360;
+  const fitHeightDistance = verticalHalfSize / Math.tan(halfFovRadians);
+  const fitWidthDistance = horizontalHalfSize / (Math.tan(halfFovRadians) * safeAspect);
+
+  return Math.max(fitHeightDistance, fitWidthDistance, 3.8);
+}
+
 export function ThreeClockPreview({
   currentTime,
   theme,
@@ -729,6 +741,7 @@ export function ThreeClockPreview({
         const size = new Vector2(mountNode.clientWidth, mountNode.clientHeight);
         renderer?.setSize(size.x, size.y);
         camera.aspect = size.x / size.y;
+        camera.position.z = getResponsiveCameraDistance(camera.aspect, showDate);
         camera.updateProjectionMatrix();
       };
 
@@ -838,9 +851,12 @@ export function ThreeClockPreview({
 
   if (renderFailed) {
     return (
-      <div className="three-preview three-preview--fallback" ref={mountRef}>
-        <p>Le rendu analogique n&apos;est pas disponible sur ce navigateur.</p>
-      </div>
+      <AnalogClockFallback
+        currentTime={currentTime}
+        theme={theme}
+        alarmPreviews={alarmPreviews}
+        showDate={showDate}
+      />
     );
   }
 
