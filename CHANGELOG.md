@@ -5,6 +5,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.23] - 2026-04-2
+
+ ### Modifié
+
+ - Affichage analogique sous macOS
+ - Correction N°3 ecrans blanc page web
 
 ## [1.0.22] - 2026-04-2
 
@@ -12,7 +18,7 @@ Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
  - Correction N°2 ecrans blanc aux build
  - Acces repertoire musique locale via bouton eject
- - Lecture audio commence à la piste 1
+ - Lecture audio commence à la piste
 
 ## [1.0.21] - 2026-04-2
 

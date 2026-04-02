@@ -173,13 +173,21 @@ function createNumberSprite(
 }
 
 function formatDateLabel(currentTime: Date) {
-  const weekday = currentTime
-    .toLocaleDateString('fr-FR', { weekday: 'long' })
-    .replace(/\b(\p{L})/gu, (match) => match.toUpperCase());
+  const capitalizeWords = (value: string) =>
+    value
+      .split(/\s+/)
+      .map((word) =>
+        word ? `${word.charAt(0).toUpperCase()}${word.slice(1)}` : word,
+      )
+      .join(' ');
+
+  const weekday = capitalizeWords(
+    currentTime.toLocaleDateString('fr-FR', { weekday: 'long' }),
+  );
   const day = currentTime.toLocaleDateString('fr-FR', { day: 'numeric' });
-  const month = currentTime
-    .toLocaleDateString('fr-FR', { month: 'long' })
-    .replace(/\b(\p{L})/gu, (match) => match.toUpperCase());
+  const month = capitalizeWords(
+    currentTime.toLocaleDateString('fr-FR', { month: 'long' }),
+  );
 
   return [weekday, day, month];
 }
@@ -676,40 +684,46 @@ export function ThreeClockPreview({
         );
       });
 
-      const clippingPlanes = createCircularClippingPlanes(0.31, -0.24, 0.152);
-      const overlayFill = theme.ACCENT;
-      const overlayOutline = theme.BG;
+      try {
+        const clippingPlanes = createCircularClippingPlanes(0.31, -0.24, 0.152);
+        const overlayFill = theme.ACCENT;
+        const overlayOutline = theme.BG;
 
-      const overlayHourHand = createOverlayHand(
-        0.043,
-        0.5,
-        0.022,
-        overlayFill,
-        overlayOutline,
-        clippingPlanes,
-      );
-      const overlayMinuteHand = createOverlayHand(
-        0.028,
-        0.76,
-        0.018,
-        overlayFill,
-        overlayOutline,
-        clippingPlanes,
-      );
-      const overlaySecondHand = createOverlayHand(
-        0.012,
-        0.82,
-        0.012,
-        overlayFill,
-        overlayOutline,
-        clippingPlanes,
-      );
+        const overlayHourHand = createOverlayHand(
+          0.043,
+          0.5,
+          0.022,
+          overlayFill,
+          overlayOutline,
+          clippingPlanes,
+        );
+        const overlayMinuteHand = createOverlayHand(
+          0.028,
+          0.76,
+          0.018,
+          overlayFill,
+          overlayOutline,
+          clippingPlanes,
+        );
+        const overlaySecondHand = createOverlayHand(
+          0.012,
+          0.82,
+          0.012,
+          overlayFill,
+          overlayOutline,
+          clippingPlanes,
+        );
 
-      overlayHourHandRef.current = overlayHourHand;
-      overlayMinuteHandRef.current = overlayMinuteHand;
-      overlaySecondHandRef.current = overlaySecondHand;
-      updateClockHands(overlayHourHand, overlayMinuteHand, overlaySecondHand, currentTime);
-      scene.add(overlayHourHand, overlayMinuteHand, overlaySecondHand);
+        overlayHourHandRef.current = overlayHourHand;
+        overlayMinuteHandRef.current = overlayMinuteHand;
+        overlaySecondHandRef.current = overlaySecondHand;
+        updateClockHands(overlayHourHand, overlayMinuteHand, overlaySecondHand, currentTime);
+        scene.add(overlayHourHand, overlayMinuteHand, overlaySecondHand);
+      } catch {
+        overlayHourHandRef.current = null;
+        overlayMinuteHandRef.current = null;
+        overlaySecondHandRef.current = null;
+      }
 
       resize = () => {
         const size = new Vector2(mountNode.clientWidth, mountNode.clientHeight);
