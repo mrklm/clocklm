@@ -30,6 +30,7 @@ body {
 .app-shell {
   position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .app-signature {
@@ -52,6 +53,12 @@ body {
 a.app-signature:hover {
   color: var(--theme-fg, #f7f4ed);
   background: color-mix(in srgb, var(--theme-panel, #10243d) 72%, transparent);
+}
+
+@media (max-width: 720px) and (pointer: coarse) {
+  .app-signature {
+    display: none;
+  }
 }
 
 button,

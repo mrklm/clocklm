@@ -5,6 +5,13 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.25] - 2026-04-2
+
+ ### Modifié
+
+ - Forcage plein ecran mode mobile
+ - Affichage analogique sous macOS
+
 ## [1.0.24] - 2026-04-2
 
  ### Ajouté
@@ -16,7 +23,7 @@ Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
  - Modif de l'icone du programme
  - Fond clair sur les themes clair en mode seven seg
  - Lecture stream ameliorée 
- - lecteure audi en mode local ignore les fichiers non audio
+ - Lecteur audio en mode local ignore les fichiers non audio
  - Réctification affichage horloge analogique en mode mobile
 
 

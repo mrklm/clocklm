@@ -630,6 +630,18 @@ function getResponsiveCameraDistance(aspect: number, showDate: boolean) {
   return Math.max(fitHeightDistance, fitWidthDistance, 3.8);
 }
 
+function shouldForceAnalogFallback() {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const userAgent = window.navigator.userAgent;
+  const isApplePlatform = /Macintosh|Mac OS X|iPhone|iPad|iPod/i.test(userAgent);
+  const isWebKitEngine = /AppleWebKit/i.test(userAgent);
+
+  return isApplePlatform && isWebKitEngine;
+}
+
 export function ThreeClockPreview({
   currentTime,
   theme,
@@ -637,7 +649,7 @@ export function ThreeClockPreview({
   showDate = false,
 }: ThreeClockPreviewProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
-  const [renderFailed, setRenderFailed] = useState(false);
+  const [renderFailed, setRenderFailed] = useState(shouldForceAnalogFallback);
   const hourHandRef = useRef<Group | null>(null);
   const minuteHandRef = useRef<Group | null>(null);
   const secondHandRef = useRef<Group | null>(null);
@@ -651,6 +663,11 @@ export function ThreeClockPreview({
     const mountNode = mountRef.current;
 
     if (!mountNode) {
+      return;
+    }
+
+    if (shouldForceAnalogFallback()) {
+      setRenderFailed(true);
       return;
     }
 

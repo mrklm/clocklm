@@ -72,6 +72,7 @@
 .clock-layout {
   display: block;
   min-height: 100vh;
+  min-height: 100dvh;
   padding: 0;
   background:
     radial-gradient(circle at top, color-mix(in srgb, var(--theme-accent) 24%, transparent), transparent 26%),
@@ -1113,9 +1114,7 @@
 }
 
 .analog-fallback__marker,
-.analog-fallback__label,
-.analog-fallback__hand,
-.analog-fallback__mini-hand {
+.analog-fallback__label {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -1185,7 +1184,11 @@
 }
 
 .analog-fallback__hand {
+  position: absolute;
+  left: 50%;
+  top: auto;
   bottom: 50%;
+  transform-origin: 50% 100%;
   border-radius: 999px;
   background: var(--analog-fallback-accent);
   box-shadow: 0 0 0 0.16rem color-mix(in srgb, var(--analog-fallback-bg) 92%, transparent);
@@ -1240,7 +1243,11 @@
 }
 
 .analog-fallback__mini-hand {
+  position: absolute;
+  left: 50%;
+  top: auto;
   bottom: 50%;
+  transform-origin: 50% 100%;
   border-radius: 999px;
   background: var(--analog-fallback-mini-accent);
 }
@@ -1896,17 +1903,87 @@
 
 @media (max-width: 720px) {
   .top-controls {
-    gap: 0.75rem;
-    align-items: flex-start;
+    top: max(0.55rem, env(safe-area-inset-top));
+    right: max(0.55rem, env(safe-area-inset-right));
+    gap: 0.45rem;
+    align-items: flex-end;
     flex-direction: column;
   }
 
+  .live-radio-controls {
+    top: max(0.55rem, env(safe-area-inset-top));
+    left: max(0.55rem, env(safe-area-inset-left));
+    max-width: min(15.5rem, calc(100vw - 5.8rem - env(safe-area-inset-left) - env(safe-area-inset-right)));
+  }
+
   .display-stage-card {
-    padding: 0.35rem;
+    padding:
+      max(0.3rem, env(safe-area-inset-top))
+      max(0.3rem, env(safe-area-inset-right))
+      max(0.3rem, env(safe-area-inset-bottom))
+      max(0.3rem, env(safe-area-inset-left));
   }
 
   .options-panel {
-    min-width: min(340px, calc(100vw - 1.5rem));
+    min-width: min(320px, calc(100vw - 1rem - env(safe-area-inset-left) - env(safe-area-inset-right)));
+    max-height: min(74dvh, 34rem);
+    padding: 0.6rem;
+  }
+
+  .live-player-button {
+    gap: 0.35rem;
+    min-height: 36px;
+  }
+
+  .live-player-button::after {
+    margin-left: 0;
+  }
+
+  .live-player-button-icon,
+  .options-button {
+    width: 1.9rem;
+    min-width: 1.9rem;
+    height: 1.9rem;
+    min-height: 1.9rem;
+    padding: 0;
+  }
+
+  .live-player-collapsed-summary {
+    display: none;
+  }
+
+  .live-player-panel {
+    gap: 0.35rem;
+    margin-top: 0.3rem;
+  }
+
+  .live-radio-select,
+  .live-audio-summary {
+    min-width: min(14.5rem, calc(100vw - 5.2rem));
+  }
+
+  .transport-controls {
+    gap: 0.28rem;
+    padding: 0.25rem 0.3rem;
+  }
+
+  .transport-button {
+    min-width: 2.2rem;
+    min-height: 2rem;
+    padding: 0.2rem 0.55rem;
+  }
+
+  .transport-button--toggle {
+    min-width: 3.3rem;
+  }
+
+  .station-combobox-panel {
+    padding: 0.35rem;
+    border-radius: 12px;
+  }
+
+  .station-suggestions {
+    max-height: min(40dvh, 14rem);
   }
 
   .segment-digit {
