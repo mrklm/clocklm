@@ -135,6 +135,7 @@ function renderActiveDisplay(
     color: string;
   }>,
   showDate: boolean,
+  use24HourFormat: boolean,
 ) {
   switch (display.id) {
     case 'analog':
@@ -154,6 +155,7 @@ function renderActiveDisplay(
           display={display}
           alarmColors={alarmColors}
           showDate={showDate}
+          use24HourFormat={use24HourFormat}
         />
       );
     case 'flip':
@@ -163,6 +165,7 @@ function renderActiveDisplay(
           display={display}
           showDate={showDate}
           alarmColors={alarmColors}
+          use24HourFormat={use24HourFormat}
         />
       );
     default:
@@ -750,6 +753,7 @@ function readStoredAlarmSettings() {
       liveAudioSource?: LiveAudioSource;
       liveRadioStationId?: string;
       showDate?: boolean;
+      use24HourFormat?: boolean;
     };
   } catch {
     return null;
@@ -770,6 +774,9 @@ function App() {
   const [activeDisplayId, setActiveDisplayId] = useState<ClockDisplayId>('analog');
   const [activeThemeName, setActiveThemeName] = useState(DEFAULT_THEME_NAME);
   const [showDate, setShowDate] = useState(storedAlarmSettings?.showDate ?? false);
+  const [use24HourFormat, setUse24HourFormat] = useState(
+    storedAlarmSettings?.use24HourFormat ?? true,
+  );
   const [appSignature, setAppSignature] = useState(APP_SIGNATURE_FALLBACK);
   const [alarms, setAlarms] = useState<AlarmDefinition[]>(
     normalizeStoredAlarms(
@@ -1353,6 +1360,7 @@ function App() {
         liveAudioSource,
         liveRadioStationId,
         showDate,
+        use24HourFormat,
       }),
     );
   }, [
@@ -1361,6 +1369,7 @@ function App() {
     liveAudioSource,
     liveRadioStationId,
     showDate,
+    use24HourFormat,
   ]);
 
   useEffect(() => {
@@ -1830,6 +1839,16 @@ function App() {
                       />
                       <span>Afficher la date</span>
                     </label>
+
+                    <label className="field-label field-label--checkbox-row" htmlFor="time-format-checkbox">
+                      <input
+                        id="time-format-checkbox"
+                        type="checkbox"
+                        checked={use24HourFormat}
+                        onChange={(event) => setUse24HourFormat(event.target.checked)}
+                      />
+                      <span>Affichage 12/24</span>
+                    </label>
                   </section>
                 ) : null}
 
@@ -2087,6 +2106,7 @@ function App() {
             alarms.map((alarm) => alarm.color),
             analogAlarmPreviews,
             showDate,
+            use24HourFormat,
           )}
         </article>
       </section>

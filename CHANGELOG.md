@@ -6,6 +6,16 @@ Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
 
+## [1.0.21] - 2026-04-1
+
+ ### Modifié
+
+ - Correction ecrans blanc aux build
+ 
+ ### Ajouté
+
+  - Mode 12/24 avec case a cocher dans options /apparences
+
 ## [1.0.20] - 2026-04-1
 
  ### Ajouté

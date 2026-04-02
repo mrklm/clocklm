@@ -6,6 +6,7 @@ type SevenSegmentClockCardProps = {
   display: ClockDisplayDefinition;
   alarmColors?: string[];
   showDate?: boolean;
+  use24HourFormat?: boolean;
 };
 
 const segmentShapes = [
@@ -86,13 +87,16 @@ export function SevenSegmentClockCard({
   display,
   alarmColors = [],
   showDate = false,
+  use24HourFormat = true,
 }: SevenSegmentClockCardProps) {
-  const timeDigits = currentTime
-    .toLocaleTimeString('fr-FR', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    })
+  const timeParts = new Intl.DateTimeFormat('fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: !use24HourFormat,
+  }).formatToParts(currentTime);
+  const hourDigits = timeParts.find((part) => part.type === 'hour')?.value ?? '00';
+  const minuteDigits = timeParts.find((part) => part.type === 'minute')?.value ?? '00';
+  const timeDigits = `${hourDigits}:${minuteDigits}`
     .split('');
   const dateParts = new Intl.DateTimeFormat('fr-FR', {
     day: '2-digit',

@@ -6,6 +6,7 @@ type FlipClockCardProps = {
   display: ClockDisplayDefinition;
   showDate?: boolean;
   alarmColors?: string[];
+  use24HourFormat?: boolean;
 };
 
 type FlipDigitTileProps = {
@@ -90,14 +91,15 @@ export function FlipClockCard({
   display,
   showDate = false,
   alarmColors = [],
+  use24HourFormat = true,
 }: FlipClockCardProps) {
-  const [hours, minutes] = currentTime
-    .toLocaleTimeString('fr-FR', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    })
-    .split(':');
+  const timeParts = new Intl.DateTimeFormat('fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: !use24HourFormat,
+  }).formatToParts(currentTime);
+  const hours = timeParts.find((part) => part.type === 'hour')?.value ?? '00';
+  const minutes = timeParts.find((part) => part.type === 'minute')?.value ?? '00';
   const dateLabel = new Intl.DateTimeFormat('fr-FR', {
     day: '2-digit',
     month: '2-digit',
