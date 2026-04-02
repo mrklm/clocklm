@@ -954,6 +954,8 @@ function App() {
   const optionsMenuRef = useRef<HTMLDetailsElement | null>(null);
   const liveRadioStageComboboxRef = useRef<HTMLDetailsElement | null>(null);
   const liveRadioOptionsComboboxRef = useRef<HTMLDetailsElement | null>(null);
+  const displayStageRef = useRef<HTMLElement | null>(null);
+  const lastDisplayTapRef = useRef(0);
   const deferredLiveRadioSearch = useDeferredValue(liveRadioSearch);
 
   useEffect(() => {
@@ -1097,6 +1099,38 @@ function App() {
     '--theme-accent': activeTheme.ACCENT,
     '--alarm-visual-color': activeAlarmColor,
   } as CSSProperties;
+
+  const toggleMobileFullscreen = async () => {
+    if (!isProbablyMobileDevice() || !displayStageRef.current) {
+      return;
+    }
+
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        return;
+      }
+
+      await displayStageRef.current.requestFullscreen();
+    } catch {
+      // Some mobile webviews may ignore fullscreen requests.
+    }
+  };
+
+  const handleDisplayStagePointerUp = () => {
+    if (!isProbablyMobileDevice()) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastDisplayTapRef.current <= 280) {
+      lastDisplayTapRef.current = 0;
+      void toggleMobileFullscreen();
+      return;
+    }
+
+    lastDisplayTapRef.current = now;
+  };
 
   const stopAlarmPlayback = () => {
     const activeAudio = alarmAudioRef.current;
@@ -1768,12 +1802,14 @@ function App() {
       />
       <section className="clock-layout" data-theme-family={themeFamily}>
         <article
+          ref={displayStageRef}
           className={`display-stage-card ${
             alarmPlaybackState === 'ringing'
               ? 'display-stage-card--alarm'
               : ''
           }`}
           data-display-id={activeDisplayId}
+          onPointerUp={handleDisplayStagePointerUp}
         >
           {alarmPlaybackState === 'ringing' && activeAlarmLabel ? (
             <div className="alarm-overlay-label" role="status" aria-live="assertive">
