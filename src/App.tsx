@@ -8,6 +8,7 @@ import {
   type InputHTMLAttributes,
 } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
+import { isTauri } from '@tauri-apps/api/core';
 import { AppShell } from './components/AppShell';
 import { AnalogClockCard } from './features/clocks/components/AnalogClockCard';
 import { FlipClockCard } from './features/clocks/components/FlipClockCard';
@@ -835,6 +836,11 @@ function App() {
   const deferredLiveRadioSearch = useDeferredValue(liveRadioSearch);
 
   useEffect(() => {
+    if (!isTauri()) {
+      setAppSignature(APP_SIGNATURE_FALLBACK);
+      return;
+    }
+
     let cancelled = false;
 
     void getVersion()
@@ -1263,9 +1269,23 @@ function App() {
     clearLiveDirectoryObjectUrls();
     stopLiveRadioPlayback();
 
-    const selectedFiles = Array.from(files ?? []).filter((file) =>
-      file.type.startsWith('audio/'),
-    );
+    const selectedFiles = Array.from(files ?? [])
+      .filter((file) => file.type.startsWith('audio/'))
+      .sort((left, right) => {
+        const leftPath =
+          'webkitRelativePath' in left && left.webkitRelativePath
+            ? left.webkitRelativePath
+            : left.name;
+        const rightPath =
+          'webkitRelativePath' in right && right.webkitRelativePath
+            ? right.webkitRelativePath
+            : right.name;
+
+        return leftPath.localeCompare(rightPath, undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        });
+      });
 
     setLiveDirectoryFiles(selectedFiles);
     setLiveDirectoryTrackLabel('');
@@ -1286,7 +1306,10 @@ function App() {
 
   const handleBrowseLiveAudio = () => {
     if (liveAudioSource === 'directory') {
-      liveDirectoryInputRef.current?.click();
+      if (liveDirectoryInputRef.current) {
+        liveDirectoryInputRef.current.value = '';
+        liveDirectoryInputRef.current.click();
+      }
       return;
     }
 
@@ -1545,6 +1568,17 @@ function App() {
       appSignature={appSignature}
       appSignatureHref={APP_REPOSITORY_URL}
     >
+      <input
+        ref={liveDirectoryInputRef}
+        className="sr-only"
+        type="file"
+        accept="audio/*"
+        multiple
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={(event) => handleLiveDirectorySelection(event.target.files)}
+        {...DIRECTORY_INPUT_ATTRIBUTES}
+      />
       <section className="clock-layout" data-theme-family={themeFamily}>
         <article
           className={`display-stage-card ${
@@ -1902,7 +1936,6 @@ function App() {
                       <label className="select-field select-field--compact" htmlFor="live-audio-directory">
                         <span className="field-label">Selection son local</span>
                         <input
-                          ref={liveDirectoryInputRef}
                           id="live-audio-directory"
                           className="text-field-input text-field-input--file"
                           type="file"

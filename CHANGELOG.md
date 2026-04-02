@@ -6,7 +6,15 @@ Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
 
-## [1.0.21] - 2026-04-1
+## [1.0.22] - 2026-04-2
+
+ ### Modifié
+
+ - Correction N°2 ecrans blanc aux build
+ - Acces repertoire musique locale via bouton eject
+ - Lecture audio commence à la piste 1
+
+## [1.0.21] - 2026-04-2
 
  ### Modifié
 

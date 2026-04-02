@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   AmbientLight,
   CanvasTexture,
@@ -617,6 +617,7 @@ export function ThreeClockPreview({
   showDate = false,
 }: ThreeClockPreviewProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  const [renderFailed, setRenderFailed] = useState(false);
   const hourHandRef = useRef<Group | null>(null);
   const minuteHandRef = useRef<Group | null>(null);
   const secondHandRef = useRef<Group | null>(null);
@@ -633,112 +634,126 @@ export function ThreeClockPreview({
       return;
     }
 
-    const scene = new Scene();
-    scene.background = new Color(theme.BG);
-
-    const camera = new PerspectiveCamera(31, 1, 0.1, 100);
-    camera.position.set(0, 0, 3.34);
-
-    const renderer = new WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.localClippingEnabled = true;
-
-    const light = new AmbientLight('#ffffff', 3.1);
-    scene.add(light);
-
-    const { hourHand, minuteHand, secondHand, dateSprite, alarmMiniClocks } = createClockScene(
-      scene,
-      theme,
-      currentTime,
-      alarmPreviews,
-      showDate,
-    );
-    hourHandRef.current = hourHand;
-    minuteHandRef.current = minuteHand;
-    secondHandRef.current = secondHand;
-    dateSpriteRef.current = dateSprite ?? null;
-    if (dateSpriteRef.current) {
-      dateSpriteRef.current.visible = showDate;
-    }
-    alarmMiniClocksRef.current = alarmMiniClocks;
-    updateClockHands(hourHand, minuteHand, secondHand, currentTime);
-    alarmMiniClocks.forEach((miniClock, index) => {
-      applyMiniClockPalette(
-        miniClock,
-        getMiniClockPalette(theme, alarmPreviews[index]?.color),
-      );
-    });
-
-    const clippingPlanes = createCircularClippingPlanes(0.31, -0.24, 0.152);
-    const overlayFill = theme.ACCENT;
-    const overlayOutline = theme.BG;
-
-    const overlayHourHand = createOverlayHand(
-      0.043,
-      0.5,
-      0.022,
-      overlayFill,
-      overlayOutline,
-      clippingPlanes,
-    );
-    const overlayMinuteHand = createOverlayHand(
-      0.028,
-      0.76,
-      0.018,
-      overlayFill,
-      overlayOutline,
-      clippingPlanes,
-    );
-    const overlaySecondHand = createOverlayHand(
-      0.012,
-      0.82,
-      0.012,
-      overlayFill,
-      overlayOutline,
-      clippingPlanes,
-    );
-
-    overlayHourHandRef.current = overlayHourHand;
-    overlayMinuteHandRef.current = overlayMinuteHand;
-    overlaySecondHandRef.current = overlaySecondHand;
-    updateClockHands(overlayHourHand, overlayMinuteHand, overlaySecondHand, currentTime);
-    scene.add(overlayHourHand, overlayMinuteHand, overlaySecondHand);
-
-    const resize = () => {
-      const size = new Vector2(mountNode.clientWidth, mountNode.clientHeight);
-      renderer.setSize(size.x, size.y);
-      camera.aspect = size.x / size.y;
-      camera.updateProjectionMatrix();
-    };
-
-    resize();
-    mountNode.appendChild(renderer.domElement);
-
+    let renderer: WebGLRenderer | null = null;
+    let cleanupMountNode: HTMLDivElement | null = null;
     let frameId = 0;
+    let resize: (() => void) | null = null;
 
-    const animate = () => {
-      renderer.render(scene, camera);
-      frameId = window.requestAnimationFrame(animate);
-    };
+    try {
+      const scene = new Scene();
+      scene.background = new Color(theme.BG);
 
-    animate();
-    window.addEventListener('resize', resize);
+      const camera = new PerspectiveCamera(31, 1, 0.1, 100);
+      camera.position.set(0, 0, 3.34);
 
-    return () => {
-      window.removeEventListener('resize', resize);
-      window.cancelAnimationFrame(frameId);
-      mountNode.removeChild(renderer.domElement);
-      renderer.dispose();
-      scene.clear();
-      hourHandRef.current = null;
-      minuteHandRef.current = null;
-      secondHandRef.current = null;
-      overlayHourHandRef.current = null;
-      overlayMinuteHandRef.current = null;
-      overlaySecondHandRef.current = null;
-      dateSpriteRef.current = null;
-      alarmMiniClocksRef.current = [];
-    };
+      renderer = new WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.localClippingEnabled = true;
+
+      const light = new AmbientLight('#ffffff', 3.1);
+      scene.add(light);
+
+      const { hourHand, minuteHand, secondHand, dateSprite, alarmMiniClocks } = createClockScene(
+        scene,
+        theme,
+        currentTime,
+        alarmPreviews,
+        showDate,
+      );
+      hourHandRef.current = hourHand;
+      minuteHandRef.current = minuteHand;
+      secondHandRef.current = secondHand;
+      dateSpriteRef.current = dateSprite ?? null;
+      if (dateSpriteRef.current) {
+        dateSpriteRef.current.visible = showDate;
+      }
+      alarmMiniClocksRef.current = alarmMiniClocks;
+      updateClockHands(hourHand, minuteHand, secondHand, currentTime);
+      alarmMiniClocks.forEach((miniClock, index) => {
+        applyMiniClockPalette(
+          miniClock,
+          getMiniClockPalette(theme, alarmPreviews[index]?.color),
+        );
+      });
+
+      const clippingPlanes = createCircularClippingPlanes(0.31, -0.24, 0.152);
+      const overlayFill = theme.ACCENT;
+      const overlayOutline = theme.BG;
+
+      const overlayHourHand = createOverlayHand(
+        0.043,
+        0.5,
+        0.022,
+        overlayFill,
+        overlayOutline,
+        clippingPlanes,
+      );
+      const overlayMinuteHand = createOverlayHand(
+        0.028,
+        0.76,
+        0.018,
+        overlayFill,
+        overlayOutline,
+        clippingPlanes,
+      );
+      const overlaySecondHand = createOverlayHand(
+        0.012,
+        0.82,
+        0.012,
+        overlayFill,
+        overlayOutline,
+        clippingPlanes,
+      );
+
+      overlayHourHandRef.current = overlayHourHand;
+      overlayMinuteHandRef.current = overlayMinuteHand;
+      overlaySecondHandRef.current = overlaySecondHand;
+      updateClockHands(overlayHourHand, overlayMinuteHand, overlaySecondHand, currentTime);
+      scene.add(overlayHourHand, overlayMinuteHand, overlaySecondHand);
+
+      resize = () => {
+        const size = new Vector2(mountNode.clientWidth, mountNode.clientHeight);
+        renderer?.setSize(size.x, size.y);
+        camera.aspect = size.x / size.y;
+        camera.updateProjectionMatrix();
+      };
+
+      resize();
+      mountNode.appendChild(renderer.domElement);
+      cleanupMountNode = mountNode;
+      setRenderFailed(false);
+
+      const animate = () => {
+        renderer?.render(scene, camera);
+        frameId = window.requestAnimationFrame(animate);
+      };
+
+      animate();
+      window.addEventListener('resize', resize);
+
+      return () => {
+        if (resize) {
+          window.removeEventListener('resize', resize);
+        }
+        window.cancelAnimationFrame(frameId);
+        if (cleanupMountNode && renderer?.domElement.parentNode === cleanupMountNode) {
+          cleanupMountNode.removeChild(renderer.domElement);
+        }
+        renderer?.dispose();
+        scene.clear();
+        hourHandRef.current = null;
+        minuteHandRef.current = null;
+        secondHandRef.current = null;
+        overlayHourHandRef.current = null;
+        overlayMinuteHandRef.current = null;
+        overlaySecondHandRef.current = null;
+        dateSpriteRef.current = null;
+        alarmMiniClocksRef.current = [];
+      };
+    } catch {
+      setRenderFailed(true);
+      renderer?.dispose();
+    }
   }, [theme, alarmPreviews, showDate]);
 
   useEffect(() => {
@@ -806,6 +821,14 @@ export function ThreeClockPreview({
       miniClock.minuteHand.rotation.z = getClockRotation(minutesProgress);
     });
   }, [alarmPreviews]);
+
+  if (renderFailed) {
+    return (
+      <div className="three-preview three-preview--fallback" ref={mountRef}>
+        <p>Le rendu analogique n&apos;est pas disponible sur ce navigateur.</p>
+      </div>
+    );
+  }
 
   return <div className="three-preview" ref={mountRef} />;
 }

@@ -998,6 +998,17 @@
   border: none;
 }
 
+.three-preview--fallback {
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  text-align: center;
+  color: color-mix(in srgb, var(--theme-fg) 82%, transparent);
+  background:
+    radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--theme-accent) 18%, transparent), transparent 28%),
+    linear-gradient(180deg, color-mix(in srgb, var(--theme-panel) 58%, transparent), color-mix(in srgb, var(--theme-bg) 88%, #000000));
+}
+
 .segment-preview {
   display: flex;
   flex-direction: column;
