@@ -314,7 +314,7 @@ dependencies = [
 
 [[package]]
 name = "clocklm"
-version = "1.0.13"
+version = "1.0.31"
 dependencies = [
  "tauri",
  "tauri-build",

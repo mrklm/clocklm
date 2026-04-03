@@ -18,14 +18,22 @@ jobs:
       matrix:
         include:
           - platform: ubuntu-22.04
-            args: ''
-            asset_prefix: Clocklm_linux
+            tauri_args: '--bundles appimage'
+            binary_dir: 'src-tauri/target/release'
+            upload_files: |
+              dist-artifacts/Clocklm_linux_v${{ steps.app_version.outputs.version }}.AppImage
+              dist-artifacts/Clocklm_linux_v${{ steps.app_version.outputs.version }}.tar.gz
           - platform: windows-2025
-            args: ''
-            asset_prefix: Clocklm_windows
+            tauri_args: '--bundles msi'
+            binary_dir: 'src-tauri/target/release'
+            upload_files: |
+              dist-artifacts/Clocklm_windows_v${{ steps.app_version.outputs.version }}.msi
+              dist-artifacts/Clocklm_windows_v${{ steps.app_version.outputs.version }}.zip
           - platform: macos-15-intel
-            args: '--target x86_64-apple-darwin'
-            asset_prefix: Clocklm_macos_x64
+            tauri_args: '--target x86_64-apple-darwin --bundles dmg'
+            binary_dir: 'src-tauri/target/x86_64-apple-darwin/release'
+            upload_files: |
+              dist-artifacts/Clocklm_macos_x64_v${{ steps.app_version.outputs.version }}.dmg
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -59,18 +67,41 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
-      - name: Build and publish Tauri app v${{ steps.app_version.outputs.version }}
-        uses: tauri-apps/tauri-action@action-v0.6.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build Tauri app v${{ steps.app_version.outputs.version }}
+        run: npm run tauri:build -- ${{ matrix.tauri_args }}
+
+      - name: Prepare Linux artifacts
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          mkdir -p dist-artifacts/Clocklm_linux_v${{ steps.app_version.outputs.version }}
+          cp src-tauri/target/release/bundle/appimage/*.AppImage dist-artifacts/Clocklm_linux_v${{ steps.app_version.outputs.version }}.AppImage
+          cp src-tauri/target/release/clocklm dist-artifacts/Clocklm_linux_v${{ steps.app_version.outputs.version }}/clocklm
+          tar -C dist-artifacts -czf dist-artifacts/Clocklm_linux_v${{ steps.app_version.outputs.version }}.tar.gz Clocklm_linux_v${{ steps.app_version.outputs.version }}
+
+      - name: Prepare Windows artifacts
+        if: matrix.platform == 'windows-2025'
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path dist-artifacts | Out-Null
+          Copy-Item src-tauri/target/release/bundle/msi/*.msi dist-artifacts/Clocklm_windows_v${{ steps.app_version.outputs.version }}.msi
+          New-Item -ItemType Directory -Force -Path dist-artifacts/Clocklm_windows_v${{ steps.app_version.outputs.version }} | Out-Null
+          Copy-Item src-tauri/target/release/clocklm.exe dist-artifacts/Clocklm_windows_v${{ steps.app_version.outputs.version }}/clocklm.exe
+          Compress-Archive -Path dist-artifacts/Clocklm_windows_v${{ steps.app_version.outputs.version }}/* -DestinationPath dist-artifacts/Clocklm_windows_v${{ steps.app_version.outputs.version }}.zip -Force
+
+      - name: Prepare macOS artifacts
+        if: matrix.platform == 'macos-15-intel'
+        run: |
+          mkdir -p dist-artifacts
+          cp src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg dist-artifacts/Clocklm_macos_x64_v${{ steps.app_version.outputs.version }}.dmg
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
         with:
-          projectPath: .
-          tagName: ${{ github.ref_name }}
-          releaseName: Clocklm v${{ steps.app_version.outputs.version }}
-          releaseBody: |
+          tag_name: ${{ github.ref_name }}
+          name: Clocklm v${{ steps.app_version.outputs.version }}
+          body: |
             Installateurs automatiques Clocklm v${{ steps.app_version.outputs.version }} pour Linux, Windows et macOS.
-          releaseDraft: false
+          draft: false
           prerelease: false
-          generateReleaseNotes: true
-          args: ${{ matrix.args }}
-          assetNamePattern: '${{ matrix.asset_prefix }}_v${{ steps.app_version.outputs.version }}[ext]'
+          generate_release_notes: true
+          files: ${{ matrix.upload_files }}

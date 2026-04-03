@@ -16,6 +16,7 @@ Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 ### Modifié
 
   - Nom des builds avec numero de version 
+  - Format des releases desktop aligne sur: Windows `.zip` + `.msi`, macOS `.dmg`, Linux `.tar.gz` + `.AppImage`
 
 ## [1.0.30] - 2026-04-3
 

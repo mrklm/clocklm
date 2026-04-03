@@ -90,7 +90,7 @@ Cette version reprend l'interface React/Vite de Clock.l.m pour un usage dans le 
 - Version web : accessible instantanement dans le navigateur, sans installation
 - Version desktop : application Tauri native, plus adaptee a un usage quotidien local
 - Version web : ne fournit pas l'emballage natif Tauri
-- Version desktop : permet la distribution `.AppImage`, `.deb`, `.msi` et `.dmg`
+- Version desktop : permet la distribution `.AppImage`, `.tar.gz`, `.zip`, `.msi` et `.dmg`
 
 ## 🚀 Demarrage rapide
 
@@ -158,8 +158,9 @@ Le workflow [`.github/workflows/tauri-release.yml`](.github/workflows/tauri-rele
 
 ### Artefacts publies
 
-- Ubuntu : `.deb`
+- Linux : `.tar.gz`
 - Linux : `.AppImage`
+- Windows : `.zip`
 - Windows : `.msi`
 - macOS Intel : `.dmg`
 
