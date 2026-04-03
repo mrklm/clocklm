@@ -1082,10 +1082,13 @@
   place-items: center;
   width: 100%;
   height: 100%;
+  padding: clamp(3.75rem, 7vh, 5.5rem) clamp(1rem, 2vw, 1.5rem) clamp(1.5rem, 3vh, 2.5rem);
 }
 
 .analog-fallback__svg {
-  width: min(86vw, 86dvh, 42rem);
+  width: min(72vw, calc(100dvh - 7.5rem), 34rem);
+  max-width: 100%;
+  max-height: 100%;
   aspect-ratio: 1;
   overflow: visible;
   filter: drop-shadow(0 1.4rem 3rem color-mix(in srgb, black 30%, transparent));
@@ -1186,8 +1189,12 @@
     padding: 2rem 1rem 1.2rem;
   }
 
+  .analog-fallback__stage {
+    padding: 4.25rem 0.75rem 1.25rem;
+  }
+
   .analog-fallback__svg {
-    width: min(84vw, 78dvh);
+    width: min(84vw, calc(100dvh - 6.25rem));
   }
 }
 
@@ -1197,13 +1204,13 @@
   align-items: center;
   justify-content: center;
   gap: clamp(0.8rem, 2vh, 1.5rem);
-  min-height: calc(100vh - 74px);
+  width: 100%;
+  min-height: 100dvh;
   padding: clamp(0.35rem, 1vh, 0.85rem);
   border-radius: 0;
   background: linear-gradient(180deg, #050505 0%, #090909 45%, #030303 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    inset 0 -24px 40px rgba(0, 0, 0, 0.4);
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .clock-layout[data-theme-family='light'] .segment-preview {

@@ -5,6 +5,13 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.27] - 2026-04-3
+
+ ### Modifié
+
+ - Version web fonctionnelle 
+ - Suppression barre du bas et resize auto horloge analogique sous macOS
+ 
 ## [1.0.26] - 2026-04-2
 
  ### Modifié

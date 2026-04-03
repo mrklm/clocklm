@@ -7,8 +7,6 @@ import {
   type CSSProperties,
   type InputHTMLAttributes,
 } from 'react';
-import { getVersion } from '@tauri-apps/api/app';
-import { isTauri } from '@tauri-apps/api/core';
 import { AppShell } from './components/AppShell';
 import { AnalogClockCard } from './features/clocks/components/AnalogClockCard';
 import { FlipClockCard } from './features/clocks/components/FlipClockCard';
@@ -974,15 +972,18 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!isTauri()) {
-      setAppSignature(APP_SIGNATURE_FALLBACK);
-      return;
-    }
-
     let cancelled = false;
 
-    void getVersion()
-      .then((version) => {
+    void Promise.all([
+      import('@tauri-apps/api/app'),
+      import('@tauri-apps/api/core'),
+    ])
+      .then(async ([appApi, coreApi]) => {
+        if (!coreApi.isTauri()) {
+          throw new Error('Not running inside Tauri');
+        }
+
+        const version = await appApi.getVersion();
         if (!cancelled) {
           setAppSignature(`Clock.l.m v${version}`);
         }
