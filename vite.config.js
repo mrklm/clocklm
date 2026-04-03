@@ -4,9 +4,11 @@ export default defineConfig(function (_a) {
     var mode = _a.mode;
     var env = loadEnv(mode, '.', '');
     var isTauriBuild = env.TAURI_ENV_PLATFORM != null;
-    var isGithubPagesBuild = mode === 'production';
+    var isProductionBuild = mode === 'production';
     return {
-        base: isTauriBuild ? './' : isGithubPagesBuild ? '/clocklm/' : '/',
+        // Relative asset URLs make the static web build portable across GitHub Pages,
+        // local previews and manual hosting under a subdirectory.
+        base: isProductionBuild || isTauriBuild ? './' : '/',
         plugins: [react()],
     };
 });

@@ -5,6 +5,16 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+
+## [1.0.29] - 2026-04-3
+
+ ### Modifié
+
+  - Persistance du thème et du type d’horloge
+  - recherge bug page web version ordinateur
+  - Thèmes plus coherents
+
+
 ## [1.0.28] - 2026-04-3
 
  ### Modifié

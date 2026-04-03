@@ -873,10 +873,29 @@ function readStoredAlarmSettings() {
       liveRadioStationId?: string;
       showDate?: boolean;
       use24HourFormat?: boolean;
+      activeDisplayId?: ClockDisplayId;
+      activeThemeName?: string;
     };
   } catch {
     return null;
   }
+}
+
+function getStoredDisplayId(candidate: unknown): ClockDisplayId {
+  if (typeof candidate !== 'string') {
+    return 'analog';
+  }
+
+  const matchingDisplay = DISPLAY_MODES.find((display) => display.id === candidate);
+  return matchingDisplay?.id ?? 'analog';
+}
+
+function getStoredThemeName(candidate: unknown) {
+  if (typeof candidate !== 'string') {
+    return DEFAULT_THEME_NAME;
+  }
+
+  return candidate in THEMES ? candidate : DEFAULT_THEME_NAME;
 }
 
 function alarmMatchesFrequency(alarm: AlarmDefinition, currentTime: Date) {
@@ -890,8 +909,12 @@ function alarmMatchesFrequency(alarm: AlarmDefinition, currentTime: Date) {
 
 function App() {
   const storedAlarmSettings = readStoredAlarmSettings();
-  const [activeDisplayId, setActiveDisplayId] = useState<ClockDisplayId>('analog');
-  const [activeThemeName, setActiveThemeName] = useState(DEFAULT_THEME_NAME);
+  const [activeDisplayId, setActiveDisplayId] = useState<ClockDisplayId>(() =>
+    getStoredDisplayId(storedAlarmSettings?.activeDisplayId),
+  );
+  const [activeThemeName, setActiveThemeName] = useState(() =>
+    getStoredThemeName(storedAlarmSettings?.activeThemeName),
+  );
   const [showDate, setShowDate] = useState(storedAlarmSettings?.showDate ?? false);
   const [use24HourFormat, setUse24HourFormat] = useState(
     storedAlarmSettings?.use24HourFormat ?? true,
@@ -1602,6 +1625,8 @@ function App() {
         liveRadioStationId,
         showDate,
         use24HourFormat,
+        activeDisplayId,
+        activeThemeName,
       }),
     );
   }, [
@@ -1611,6 +1636,8 @@ function App() {
     liveRadioStationId,
     showDate,
     use24HourFormat,
+    activeDisplayId,
+    activeThemeName,
   ]);
 
   useEffect(() => {

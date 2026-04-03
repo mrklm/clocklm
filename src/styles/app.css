@@ -1059,6 +1059,19 @@
     linear-gradient(180deg, var(--theme-bg), color-mix(in srgb, var(--theme-panel) 86%, white 14%));
 }
 
+.clock-layout[data-theme-family='playful'] .display-stage-card[data-display-id='analog'],
+.clock-layout[data-theme-family='playful'] .three-preview {
+  background:
+    radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--theme-accent) 34%, transparent), transparent 28%),
+    radial-gradient(circle at 82% 14%, color-mix(in srgb, var(--theme-field) 30%, transparent), transparent 24%),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--theme-panel) 62%, white 10%) 0%,
+      color-mix(in srgb, var(--theme-bg) 84%, var(--theme-accent) 16%) 52%,
+      color-mix(in srgb, var(--theme-panel) 58%, black 8%) 100%
+    );
+}
+
 .three-preview--fallback {
   display: grid;
   place-items: center;
@@ -1222,6 +1235,21 @@
     inset 0 -20px 32px color-mix(in srgb, var(--theme-panel) 12%, transparent);
 }
 
+.clock-layout[data-theme-family='playful'] .segment-preview {
+  background:
+    radial-gradient(circle at 18% 22%, color-mix(in srgb, var(--theme-accent) 34%, transparent), transparent 28%),
+    radial-gradient(circle at 84% 12%, color-mix(in srgb, var(--theme-field) 28%, transparent), transparent 24%),
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--theme-bg) 76%, white 10%) 0%,
+      color-mix(in srgb, var(--theme-panel) 68%, var(--theme-accent) 12%) 48%,
+      color-mix(in srgb, var(--theme-field) 74%, black 6%) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 24%, transparent),
+    inset 0 -24px 40px color-mix(in srgb, var(--theme-panel) 18%, transparent);
+}
+
 .segment-row {
   display: flex;
   align-items: center;
@@ -1318,6 +1346,26 @@
     drop-shadow(0 0 8px color-mix(in srgb, var(--theme-accent) 9%, transparent));
 }
 
+.clock-layout[data-theme-family='playful'] .segment-shape {
+  fill: color-mix(in srgb, var(--theme-panel) 48%, black 12%);
+  stroke: color-mix(in srgb, var(--theme-field) 12%, transparent);
+  opacity: 0.58;
+}
+
+.clock-layout[data-theme-family='playful'] .segment-shape.on {
+  fill: color-mix(in srgb, var(--theme-accent) 78%, white 22%);
+  filter:
+    drop-shadow(0 0 5px color-mix(in srgb, var(--theme-accent) 62%, transparent))
+    drop-shadow(0 0 16px color-mix(in srgb, var(--theme-field) 24%, transparent));
+}
+
+.clock-layout[data-theme-family='playful'] .segment-colon span {
+  background: color-mix(in srgb, var(--theme-accent) 74%, white 26%);
+  box-shadow:
+    0 0 12px color-mix(in srgb, var(--theme-accent) 54%, transparent),
+    0 0 24px color-mix(in srgb, var(--theme-field) 22%, transparent);
+}
+
 .segment-colon-wrap {
   display: flex;
   align-items: center;
@@ -1369,6 +1417,25 @@
     0 20px 42px rgba(0, 0, 0, 0.26);
 }
 
+.clock-layout[data-theme-family='playful'] .flip-preview {
+  border-color: color-mix(in srgb, var(--theme-accent) 28%, transparent);
+  background:
+    radial-gradient(circle at 16% 16%, color-mix(in srgb, var(--theme-accent) 30%, transparent), transparent 24%),
+    radial-gradient(circle at 84% 10%, color-mix(in srgb, var(--theme-field) 26%, transparent), transparent 22%),
+    linear-gradient(180deg, color-mix(in srgb, white 10%, transparent), transparent 14%),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--theme-panel) 70%, white 10%) 0%,
+      color-mix(in srgb, var(--theme-bg) 82%, var(--theme-accent) 18%) 18%,
+      color-mix(in srgb, var(--theme-field) 74%, black 8%) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 18%, transparent),
+    inset 0 -24px 34px color-mix(in srgb, var(--theme-panel) 18%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, white 6%, transparent),
+    0 20px 42px color-mix(in srgb, var(--theme-bg) 28%, transparent);
+}
+
 .flip-stage-cluster {
   position: relative;
   display: inline-flex;
@@ -1393,6 +1460,22 @@
     inset 0 -1px 0 rgba(0, 0, 0, 0.35),
     inset 0 0 0 1px rgba(255, 255, 255, 0.025),
     0 12px 24px rgba(0, 0, 0, 0.2);
+}
+
+.clock-layout[data-theme-family='playful'] .flip-stage-cluster,
+.clock-layout[data-theme-family='playful'] .flip-date-row {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, white 8%, transparent), transparent 14%),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--theme-panel) 70%, white 10%) 0%,
+      color-mix(in srgb, var(--theme-bg) 82%, var(--theme-accent) 18%) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 14%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, black 16%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--theme-field) 10%, transparent),
+    0 12px 24px color-mix(in srgb, var(--theme-bg) 24%, transparent);
 }
 
 .flip-time-row {
@@ -1515,6 +1598,22 @@
   perspective: 1200px;
 }
 
+.clock-layout[data-theme-family='playful'] .flip-tile {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, white 8%, transparent), transparent 16%),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--theme-field) 54%, white 8%) 0%,
+      color-mix(in srgb, var(--theme-panel) 72%, var(--theme-accent) 10%) 100%
+    );
+  border-color: color-mix(in srgb, var(--theme-accent) 24%, transparent);
+  box-shadow:
+    0 14px 24px color-mix(in srgb, var(--theme-bg) 24%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 12%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, black 14%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--theme-field) 8%, transparent);
+}
+
 .flip-half {
   display: grid;
   place-items: center;
@@ -1529,6 +1628,13 @@
 
 .flip-half.bottom {
   background: color-mix(in srgb, var(--theme-panel) 58%, #2a241f);
+}
+
+.clock-layout[data-theme-family='playful'] .flip-half,
+.clock-layout[data-theme-family='playful'] .flip-half.bottom,
+.clock-layout[data-theme-family='playful'] .flip-flap-top,
+.clock-layout[data-theme-family='playful'] .flip-flap-bottom {
+  background: color-mix(in srgb, var(--theme-field) 52%, var(--theme-panel));
 }
 
 .flip-texture {
@@ -1628,6 +1734,21 @@
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.06),
     0 2px 10px rgba(0, 0, 0, 0.28);
+}
+
+.clock-layout[data-theme-family='playful'] .flip-divider {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--theme-bg) 76%, black 14%),
+    color-mix(in srgb, var(--theme-accent) 24%, var(--theme-panel)),
+    color-mix(in srgb, var(--theme-bg) 76%, black 14%)
+  );
+}
+
+.clock-layout[data-theme-family='playful'] .flip-pin {
+  background:
+    radial-gradient(circle at 35% 30%, color-mix(in srgb, white 36%, transparent), transparent 36%),
+    color-mix(in srgb, var(--theme-accent) 30%, var(--theme-panel));
 }
 
 .flip-pin {
