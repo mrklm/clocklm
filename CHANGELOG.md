@@ -5,6 +5,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.31] - 2026-04-3
+
+ ### Modifié
+
+  - Nom des build avec numero de version 
+
 ## [1.0.30] - 2026-04-3
 
  ### Modifié
