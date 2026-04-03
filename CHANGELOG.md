@@ -5,13 +5,20 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.30] - 2026-04-3
+
+ ### Modifié
+
+ - Modification des build-script: N° de version dans le nom
+ - Selection de repertoire pour la lecture d'audio locale 
+
 
 ## [1.0.29] - 2026-04-3
 
  ### Modifié
 
   - Persistance du thème et du type d’horloge
-  - recherge bug page web version ordinateur
+  - recherche bug page web version ordinateur
   - Thèmes plus coherents
 
 

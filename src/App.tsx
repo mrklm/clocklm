@@ -122,7 +122,9 @@ const ALARM_SETTINGS_STORAGE_KEY = 'clocklm.alarm-settings';
 const APP_SIGNATURE_FALLBACK = `Clock.l.m v${packageJson.version}`;
 const APP_REPOSITORY_URL = 'https://github.com/mrklm/clocklm';
 const DIRECTORY_INPUT_ATTRIBUTES = {
-  webkitdirectory: '',
+  directory: true,
+  webkitdirectory: true,
+  mozdirectory: true,
 } as unknown as InputHTMLAttributes<HTMLInputElement>;
 
 function renderActiveDisplay(
@@ -948,6 +950,7 @@ function App() {
   const [liveDirectoryFiles, setLiveDirectoryFiles] = useState<File[]>([]);
   const [liveDirectoryName, setLiveDirectoryName] = useState('');
   const [liveDirectoryTrackLabel, setLiveDirectoryTrackLabel] = useState('');
+  const [liveDirectorySelectionMessage, setLiveDirectorySelectionMessage] = useState('');
   const [liveDirectoryPlaybackMode, setLiveDirectoryPlaybackMode] =
     useState<LiveDirectoryPlaybackMode>('normal');
   const [liveRadioSearch, setLiveRadioSearch] = useState('');
@@ -1510,7 +1513,9 @@ function App() {
     clearLiveDirectoryObjectUrls();
     stopLiveRadioPlayback();
 
-    const selectedFiles = Array.from(files ?? [])
+    const receivedFiles = Array.from(files ?? []);
+
+    const selectedFiles = receivedFiles
       .filter(isSupportedLocalAudioFile)
       .sort((left, right) => {
         const leftPath =
@@ -1531,12 +1536,23 @@ function App() {
     setLiveDirectoryFiles(selectedFiles);
     setLiveDirectoryTrackLabel('');
 
-    if (selectedFiles.length === 0) {
+    if (receivedFiles.length === 0) {
+      setLiveDirectorySelectionMessage('Aucun dossier selectionne.');
       pendingLiveAutoplayRef.current = null;
       setLiveDirectoryName('');
       return;
     }
 
+    if (selectedFiles.length === 0) {
+      setLiveDirectorySelectionMessage(
+        'Dossier charge, mais aucun fichier audio compatible n a ete trouve.',
+      );
+      pendingLiveAutoplayRef.current = null;
+      setLiveDirectoryName('');
+      return;
+    }
+
+    setLiveDirectorySelectionMessage('');
     pendingLiveAutoplayRef.current = 'directory';
     const firstFile = selectedFiles[0];
     const relativePath =
@@ -2193,24 +2209,21 @@ function App() {
                         />
                       </div>
                     ) : (
-                      <label className="select-field select-field--compact" htmlFor="live-audio-directory">
+                      <div className="select-field select-field--compact">
                         <span className="field-label">Selection son local</span>
-                        <input
-                          id="live-audio-directory"
+                        <button
+                          type="button"
                           className="text-field-input text-field-input--file"
-                          type="file"
-                          accept="audio/*"
-                          multiple
-                          disabled={false}
-                          onChange={(event) => handleLiveDirectorySelection(event.target.files)}
-                          {...DIRECTORY_INPUT_ATTRIBUTES}
-                        />
+                          onClick={handleBrowseLiveAudio}
+                        >
+                          Parcourir un dossier audio
+                        </button>
                         <span className="field-hint">
                           {liveDirectoryFiles.length > 0
                             ? `${liveDirectoryFiles.length} fichier(s) audio dans ${liveDirectoryName || 'le dossier selectionne'}.`
-                            : 'Clique sur Parcourir puis choisis un dossier contenant tes musiques.'}
+                            : liveDirectorySelectionMessage || 'Clique sur Parcourir puis choisis un dossier contenant tes musiques.'}
                         </span>
-                      </label>
+                      </div>
                     )}
                   </section>
                 ) : null}
