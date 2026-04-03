@@ -171,6 +171,18 @@ const DEFAULT_LAUT_FM_STATIONS: LautFmStation[] = [
   ),
   createLautFmStation('vaporwave', 'Vaporwave', 'Vaporwave / retro'),
 ];
+const FEATURED_ALTERNATIVE_STATION_IDS = [
+  'nts-slow-focus',
+  'nts-low-key',
+  'lofi',
+  'natureadio',
+  'nts-field-recordings',
+  'nts-poolside',
+  'nts-expansions',
+  'nts-feelings',
+  'noods-radio',
+  'cashmere-radio',
+];
 const ALARM_BADGE_COLOR_PALETTE = [
   '#ff8a3d',
   '#ff4f6d',
@@ -704,29 +716,24 @@ function getStationSuggestions(
     .slice(0, limit);
 }
 
-function getRecentStations(
+function getFeaturedAlternativeStations(
   stations: LautFmStation[],
-  recentStationIds: string[],
   selectedStationId: string,
   limit = 10,
 ) {
   const stationMap = new Map(stations.map((station) => [station.id, station]));
-  const recentStations = recentStationIds
+  const featuredStations = FEATURED_ALTERNATIVE_STATION_IDS
+    .filter((stationId) => stationId !== selectedStationId)
     .map((stationId) => stationMap.get(stationId))
     .filter((station): station is LautFmStation => Boolean(station));
 
-  if (!recentStations.some((station) => station.id === selectedStationId)) {
-    const selectedStation = stationMap.get(selectedStationId);
-    if (selectedStation) {
-      recentStations.unshift(selectedStation);
-    }
-  }
-
   const fallbackStations = stations.filter(
-    (station) => !recentStations.some((recentStation) => recentStation.id === station.id),
+    (station) =>
+      station.id !== selectedStationId
+      && !featuredStations.some((featuredStation) => featuredStation.id === station.id),
   );
 
-  return [...recentStations, ...fallbackStations].slice(0, limit);
+  return [...featuredStations, ...fallbackStations].slice(0, limit);
 }
 
 type StationComboboxProps = {
@@ -735,7 +742,7 @@ type StationComboboxProps = {
   label?: string;
   selectedStation: LautFmStation;
   suggestions: LautFmStation[];
-  recentStations: LautFmStation[];
+  alternativeStations: LautFmStation[];
   searchValue: string;
   searchState?: 'idle' | 'loading' | 'error';
   currentSongLabel?: string;
@@ -754,7 +761,7 @@ function StationCombobox({
   label,
   selectedStation,
   suggestions,
-  recentStations,
+  alternativeStations,
   searchValue,
   searchState = 'idle',
   currentSongLabel = '',
@@ -766,7 +773,7 @@ function StationCombobox({
   className,
   detailsRef,
 }: StationComboboxProps) {
-  const displayedStations = searchValue.trim() ? suggestions : recentStations;
+  const displayedStations = searchValue.trim() ? suggestions : alternativeStations;
 
   return (
     <div className={className}>
@@ -807,7 +814,7 @@ function StationCombobox({
           />
 
           <p className="station-suggestions-label">
-            {searchValue.trim() ? 'Occurrences' : 'Dernieres radios selectionnees'}
+            {searchValue.trim() ? 'Occurrences' : '10 radios alternatives'}
           </p>
 
           <div className="station-suggestions" role="listbox" aria-labelledby={buttonId}>
@@ -1149,14 +1156,13 @@ function App() {
       ),
     [liveRadioSearch, liveRadioStationId, liveRadioStations],
   );
-  const liveRadioRecentStations = useMemo(
+  const liveRadioAlternativeStations = useMemo(
     () =>
-      getRecentStations(
+      getFeaturedAlternativeStations(
         mergeStations(liveRadioStations, DEFAULT_LAUT_FM_STATIONS),
-        recentRadioStationIds,
         liveRadioStationId,
       ),
-    [liveRadioStationId, liveRadioStations, recentRadioStationIds],
+    [liveRadioStationId, liveRadioStations],
   );
   const analogAlarmPreviews = useMemo(
     () => alarms.map((alarm) => ({ time: alarm.time, color: alarm.color })),
@@ -1961,7 +1967,7 @@ function App() {
                   searchId="live-radio-search"
                   selectedStation={selectedLiveRadioStation}
                   suggestions={liveRadioSuggestions}
-                  recentStations={liveRadioRecentStations}
+                  alternativeStations={liveRadioAlternativeStations}
                   searchValue={liveRadioSearch}
                   searchState={deferredLiveRadioSearch !== liveRadioSearch ? 'loading' : 'idle'}
                   currentSongLabel={liveRadioCurrentSongLabel}
@@ -2255,7 +2261,7 @@ function App() {
                           label="Selection radio"
                           selectedStation={selectedLiveRadioStation}
                           suggestions={liveRadioSuggestions}
-                          recentStations={liveRadioRecentStations}
+                          alternativeStations={liveRadioAlternativeStations}
                           searchValue={liveRadioSearch}
                           searchState={deferredLiveRadioSearch !== liveRadioSearch ? 'loading' : 'idle'}
                           currentSongLabel={liveRadioCurrentSongLabel}

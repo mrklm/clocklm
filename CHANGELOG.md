@@ -5,12 +5,13 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
-## [1.0.32] - 2026-04-03
+## [1.0.33] - 2026-04-03
 
 ### Ajouté
 
  - Nouvelle liste radio orientee cool: ambient, lo-fi hip-hop, chill, soul et leftfield
  - Selection privilegiee sur des radios/community streams sans pub explicite ou a modele non-commercial
+ - Le clic sur la radio courante propose maintenant 10 radios alternatives au lieu des dernieres radios selectionnees
 
 ### Modifié
 
