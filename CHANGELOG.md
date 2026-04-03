@@ -5,6 +5,13 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.28] - 2026-04-3
+
+ ### Modifié
+
+ - Version web fonctionnelle recherche bug ecran blanc
+ - lecture audio de plusieurs fichiers sous macOS
+
 ## [1.0.27] - 2026-04-3
 
  ### Modifié

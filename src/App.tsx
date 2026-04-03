@@ -1392,7 +1392,6 @@ function App() {
       return;
     }
 
-    stopLiveRadioPlayback();
     stopAlarmPlayback();
 
     try {
@@ -1418,7 +1417,17 @@ function App() {
       liveDirectoryObjectUrlsRef.current[trackIndex] = objectUrl;
       liveDirectoryTrackIndexRef.current = trackIndex;
 
-      const audio = new Audio(objectUrl);
+      const audio = liveRadioAudioRef.current ?? new Audio();
+      audio.pause();
+      audio.onended = null;
+      audio.onerror = null;
+      audio.preload = 'auto';
+
+      if (audio.src !== objectUrl) {
+        audio.src = objectUrl;
+      }
+      audio.currentTime = 0;
+
       audio.preload = 'auto';
       audio.onended = () => {
         const nextIndex = getNextDirectoryTrackIndex(
