@@ -1119,6 +1119,30 @@ function App() {
   }, []);
 
   useEffect(() => {
+    const input = liveDirectoryInputRef.current;
+    if (!input) {
+      return;
+    }
+
+    input.setAttribute('directory', '');
+    input.setAttribute('webkitdirectory', '');
+    input.setAttribute('mozdirectory', '');
+    input.setAttribute('multiple', '');
+
+    type DirectoryCapableInput = HTMLInputElement & {
+      directory?: boolean;
+      webkitdirectory?: boolean;
+      mozdirectory?: boolean;
+    };
+
+    const directoryInput = input as DirectoryCapableInput;
+    directoryInput.directory = true;
+    directoryInput.webkitdirectory = true;
+    directoryInput.mozdirectory = true;
+    input.multiple = true;
+  }, []);
+
+  useEffect(() => {
     const handlePointerDown = (event: PointerEvent) => {
       const targetNode = event.target;
       if (!(targetNode instanceof Node)) {
@@ -1956,7 +1980,11 @@ function App() {
         onChange={(event) => handleLiveDirectorySelection(event.target.files)}
         {...DIRECTORY_INPUT_ATTRIBUTES}
       />
-      <section className={clockLayoutClasses} data-theme-family={themeFamily}>
+      <section
+        className={clockLayoutClasses}
+        data-theme-family={themeFamily}
+        data-theme-name={activeThemeName}
+      >
         <article
           ref={displayStageRef}
           className={`display-stage-card ${

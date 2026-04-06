@@ -5,6 +5,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.39] - 2026-04-06
+
+### Modifié
+
+ - Afinement precis des thèmes pouet sous macOS
+ - Ajustement taille horloge analogique sous macOS
 
 ## [1.0.38] - 2026-04-06
 
