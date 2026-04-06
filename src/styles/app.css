@@ -1121,6 +1121,11 @@
     );
 }
 
+.clock-layout--apple-webkit[data-theme-family='playful'] .display-stage-card[data-display-id='analog'],
+.clock-layout--apple-webkit[data-theme-family='playful'] .three-preview {
+  background: linear-gradient(180deg, var(--theme-panel) 0%, var(--theme-bg) 100%);
+}
+
 .three-preview--fallback {
   display: grid;
   place-items: center;
@@ -1347,6 +1352,13 @@
     inset 0 -24px 40px color-mix(in srgb, var(--theme-panel) 18%, transparent);
 }
 
+.clock-layout--apple-webkit[data-theme-family='playful'] .segment-preview {
+  background: linear-gradient(180deg, var(--theme-panel) 0%, var(--theme-bg) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -20px 28px rgba(0, 0, 0, 0.22);
+}
+
 .clock-layout--no-color-mix[data-theme-family='playful'] .segment-preview {
   background: linear-gradient(160deg, var(--theme-bg) 0%, var(--theme-panel) 55%, var(--theme-field) 100%);
 }
@@ -1464,11 +1476,24 @@
   opacity: 0.58;
 }
 
+.clock-layout--apple-webkit[data-theme-family='playful'] .segment-shape {
+  fill: rgba(0, 0, 0, 0.34);
+  stroke: rgba(255, 255, 255, 0.06);
+  opacity: 0.72;
+}
+
 .clock-layout[data-theme-family='playful'] .segment-shape.on {
   fill: color-mix(in srgb, var(--theme-accent) 78%, white 22%);
   filter:
     drop-shadow(0 0 5px color-mix(in srgb, var(--theme-accent) 62%, transparent))
     drop-shadow(0 0 16px color-mix(in srgb, var(--theme-field) 24%, transparent));
+}
+
+.clock-layout--apple-webkit[data-theme-family='playful'] .segment-shape.on {
+  fill: var(--theme-field-fg);
+  filter:
+    drop-shadow(0 0 6px rgba(255, 255, 255, 0.28))
+    drop-shadow(0 0 18px rgba(255, 255, 255, 0.12));
 }
 
 .clock-layout--no-color-mix .segment-colon span {
@@ -1481,6 +1506,13 @@
   box-shadow:
     0 0 12px color-mix(in srgb, var(--theme-accent) 54%, transparent),
     0 0 24px color-mix(in srgb, var(--theme-field) 22%, transparent);
+}
+
+.clock-layout--apple-webkit[data-theme-family='playful'] .segment-colon span {
+  background: var(--theme-field-fg);
+  box-shadow:
+    0 0 10px rgba(255, 255, 255, 0.2),
+    0 0 20px rgba(255, 255, 255, 0.1);
 }
 
 .segment-colon-wrap {
@@ -1551,6 +1583,12 @@
     inset 0 -24px 34px color-mix(in srgb, var(--theme-panel) 18%, transparent),
     inset 0 0 0 1px color-mix(in srgb, white 6%, transparent),
     0 20px 42px color-mix(in srgb, var(--theme-bg) 28%, transparent);
+}
+
+.clock-layout--apple-webkit[data-theme-family='playful'] .flip-preview,
+.clock-layout--apple-webkit[data-theme-family='playful'] .flip-stage-cluster,
+.clock-layout--apple-webkit[data-theme-family='playful'] .flip-date-row {
+  background: linear-gradient(180deg, var(--theme-panel) 0%, var(--theme-bg) 100%);
 }
 
 .flip-stage-cluster {
@@ -1731,6 +1769,15 @@
     inset 0 0 0 1px color-mix(in srgb, var(--theme-field) 8%, transparent);
 }
 
+.clock-layout--apple-webkit[data-theme-family='playful'] .flip-tile,
+.clock-layout--apple-webkit[data-theme-family='playful'] .flip-half,
+.clock-layout--apple-webkit[data-theme-family='playful'] .flip-half.bottom,
+.clock-layout--apple-webkit[data-theme-family='playful'] .flip-flap-top,
+.clock-layout--apple-webkit[data-theme-family='playful'] .flip-flap-bottom {
+  background: linear-gradient(180deg, var(--theme-field) 0%, var(--theme-panel) 100%);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
 .flip-half {
   display: grid;
   place-items: center;
@@ -1827,6 +1874,15 @@
     0 6px 14px rgba(0, 0, 0, 0.18);
 }
 
+.clock-layout--apple-webkit[data-theme-family='playful'] .flip-static-digit,
+.clock-layout--apple-webkit[data-theme-family='playful'] .flip-animated-digit {
+  color: var(--theme-field-fg);
+  text-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.18),
+    0 0 8px rgba(255, 255, 255, 0.08),
+    0 8px 16px rgba(0, 0, 0, 0.22);
+}
+
 .flip-half.top .flip-static-digit {
   top: 0;
 }
@@ -1860,6 +1916,10 @@
     color-mix(in srgb, var(--theme-accent) 24%, var(--theme-panel)),
     color-mix(in srgb, var(--theme-bg) 76%, black 14%)
   );
+}
+
+.clock-layout--apple-webkit[data-theme-family='playful'] .flip-divider {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.55), rgba(255, 255, 255, 0.12), rgba(0, 0, 0, 0.55));
 }
 
 .clock-layout[data-theme-family='playful'] .flip-pin {
@@ -1990,6 +2050,13 @@
     0 0 16px color-mix(in srgb, var(--theme-accent) 55%, transparent),
     0 0 28px color-mix(in srgb, var(--theme-accent) 22%, transparent),
     0 0 0 6px color-mix(in srgb, var(--theme-accent) 16%, transparent);
+}
+
+.clock-layout--apple-webkit[data-theme-family='playful'] .flip-separator span {
+  background: var(--theme-field-fg);
+  box-shadow:
+    0 0 10px rgba(255, 255, 255, 0.22),
+    0 0 0 4px rgba(255, 255, 255, 0.08);
 }
 
 @keyframes flip-top {

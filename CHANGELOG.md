@@ -6,7 +6,13 @@ Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
 
-## [1.0.36] - 2026-04-06
+## [1.0.38] - 2026-04-06
+
+### Modifié
+
+ - Ajustement des thèmes pouet sous macOS
+
+## [1.0.37] - 2026-04-06
 
 ### Modifié
 
