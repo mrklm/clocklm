@@ -5,6 +5,11 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.36] - 2026-04-06
+
+### Modifié
+
+ - Resolution echec des builds
 
 ## [1.0.35] - 2026-04-06
 
