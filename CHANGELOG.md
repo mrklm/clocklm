@@ -6,6 +6,13 @@ Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
 
+## [1.0.35] - 2026-04-06
+
+### Modifié
+
+ - sécurise la release GitHub et fiabilise la synchronisation des versions
+
+
 ## [1.0.34] - 2026-04-06
 
 ### Modifié

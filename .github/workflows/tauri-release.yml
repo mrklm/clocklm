@@ -21,19 +21,19 @@ jobs:
             tauri_args: '--bundles appimage'
             binary_dir: 'src-tauri/target/release'
             upload_files: |
-              dist-artifacts/Clocklm_linux_v${{ steps.app_version.outputs.version }}.AppImage
-              dist-artifacts/Clocklm_linux_v${{ steps.app_version.outputs.version }}.tar.gz
+              dist-artifacts/Clocklm_linux_${{ github.ref_name }}.AppImage
+              dist-artifacts/Clocklm_linux_${{ github.ref_name }}.tar.gz
           - platform: windows-2025
             tauri_args: '--bundles msi'
             binary_dir: 'src-tauri/target/release'
             upload_files: |
-              dist-artifacts/Clocklm_windows_v${{ steps.app_version.outputs.version }}.msi
-              dist-artifacts/Clocklm_windows_v${{ steps.app_version.outputs.version }}.zip
+              dist-artifacts/Clocklm_windows_${{ github.ref_name }}.msi
+              dist-artifacts/Clocklm_windows_${{ github.ref_name }}.zip
           - platform: macos-15-intel
             tauri_args: '--target x86_64-apple-darwin --bundles dmg'
             binary_dir: 'src-tauri/target/x86_64-apple-darwin/release'
             upload_files: |
-              dist-artifacts/Clocklm_macos_x64_v${{ steps.app_version.outputs.version }}.dmg
+              dist-artifacts/Clocklm_macos_x64_${{ github.ref_name }}.dmg
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -81,31 +81,31 @@ jobs:
       - name: Prepare Linux artifacts
         if: matrix.platform == 'ubuntu-22.04'
         run: |
-          mkdir -p dist-artifacts/Clocklm_linux_v${{ steps.app_version.outputs.version }}
-          cp src-tauri/target/release/bundle/appimage/*.AppImage dist-artifacts/Clocklm_linux_v${{ steps.app_version.outputs.version }}.AppImage
-          cp src-tauri/target/release/clocklm dist-artifacts/Clocklm_linux_v${{ steps.app_version.outputs.version }}/clocklm
-          tar -C dist-artifacts -czf dist-artifacts/Clocklm_linux_v${{ steps.app_version.outputs.version }}.tar.gz Clocklm_linux_v${{ steps.app_version.outputs.version }}
-          test -f dist-artifacts/Clocklm_linux_v${{ steps.app_version.outputs.version }}.AppImage
-          test -f dist-artifacts/Clocklm_linux_v${{ steps.app_version.outputs.version }}.tar.gz
+          mkdir -p dist-artifacts/Clocklm_linux_${{ github.ref_name }}
+          cp src-tauri/target/release/bundle/appimage/*.AppImage dist-artifacts/Clocklm_linux_${{ github.ref_name }}.AppImage
+          cp src-tauri/target/release/clocklm dist-artifacts/Clocklm_linux_${{ github.ref_name }}/clocklm
+          tar -C dist-artifacts -czf dist-artifacts/Clocklm_linux_${{ github.ref_name }}.tar.gz Clocklm_linux_${{ github.ref_name }}
+          test -f dist-artifacts/Clocklm_linux_${{ github.ref_name }}.AppImage
+          test -f dist-artifacts/Clocklm_linux_${{ github.ref_name }}.tar.gz
 
       - name: Prepare Windows artifacts
         if: matrix.platform == 'windows-2025'
         shell: powershell
         run: |
           New-Item -ItemType Directory -Force -Path dist-artifacts | Out-Null
-          Copy-Item src-tauri/target/release/bundle/msi/*.msi dist-artifacts/Clocklm_windows_v${{ steps.app_version.outputs.version }}.msi
-          New-Item -ItemType Directory -Force -Path dist-artifacts/Clocklm_windows_v${{ steps.app_version.outputs.version }} | Out-Null
-          Copy-Item src-tauri/target/release/clocklm.exe dist-artifacts/Clocklm_windows_v${{ steps.app_version.outputs.version }}/clocklm.exe
-          Compress-Archive -Path dist-artifacts/Clocklm_windows_v${{ steps.app_version.outputs.version }}/* -DestinationPath dist-artifacts/Clocklm_windows_v${{ steps.app_version.outputs.version }}.zip -Force
-          if (-not (Test-Path "dist-artifacts/Clocklm_windows_v${{ steps.app_version.outputs.version }}.msi")) { throw "Missing Windows MSI artifact" }
-          if (-not (Test-Path "dist-artifacts/Clocklm_windows_v${{ steps.app_version.outputs.version }}.zip")) { throw "Missing Windows ZIP artifact" }
+          Copy-Item src-tauri/target/release/bundle/msi/*.msi dist-artifacts/Clocklm_windows_${{ github.ref_name }}.msi
+          New-Item -ItemType Directory -Force -Path dist-artifacts/Clocklm_windows_${{ github.ref_name }} | Out-Null
+          Copy-Item src-tauri/target/release/clocklm.exe dist-artifacts/Clocklm_windows_${{ github.ref_name }}/clocklm.exe
+          Compress-Archive -Path dist-artifacts/Clocklm_windows_${{ github.ref_name }}/* -DestinationPath dist-artifacts/Clocklm_windows_${{ github.ref_name }}.zip -Force
+          if (-not (Test-Path "dist-artifacts/Clocklm_windows_${{ github.ref_name }}.msi")) { throw "Missing Windows MSI artifact" }
+          if (-not (Test-Path "dist-artifacts/Clocklm_windows_${{ github.ref_name }}.zip")) { throw "Missing Windows ZIP artifact" }
 
       - name: Prepare macOS artifacts
         if: matrix.platform == 'macos-15-intel'
         run: |
           mkdir -p dist-artifacts
-          cp src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg dist-artifacts/Clocklm_macos_x64_v${{ steps.app_version.outputs.version }}.dmg
-          test -f dist-artifacts/Clocklm_macos_x64_v${{ steps.app_version.outputs.version }}.dmg
+          cp src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg dist-artifacts/Clocklm_macos_x64_${{ github.ref_name }}.dmg
+          test -f dist-artifacts/Clocklm_macos_x64_${{ github.ref_name }}.dmg
 
       - name: Publish release assets
         uses: softprops/action-gh-release@v2
