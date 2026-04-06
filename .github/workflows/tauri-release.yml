@@ -40,15 +40,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Read app version
-        id: app_version
-        run: echo "version=$(node -p 'require(\"./package.json\").version')" >> "$GITHUB_OUTPUT"
-
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
+
+      - name: Resolve release version
+        id: app_version
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          package_version="$(node -p 'require("./package.json").version')"
+          if [ "$version" != "$package_version" ]; then
+            echo "Tag version ($version) does not match package.json version ($package_version)." >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -77,6 +85,8 @@ jobs:
           cp src-tauri/target/release/bundle/appimage/*.AppImage dist-artifacts/Clocklm_linux_v${{ steps.app_version.outputs.version }}.AppImage
           cp src-tauri/target/release/clocklm dist-artifacts/Clocklm_linux_v${{ steps.app_version.outputs.version }}/clocklm
           tar -C dist-artifacts -czf dist-artifacts/Clocklm_linux_v${{ steps.app_version.outputs.version }}.tar.gz Clocklm_linux_v${{ steps.app_version.outputs.version }}
+          test -f dist-artifacts/Clocklm_linux_v${{ steps.app_version.outputs.version }}.AppImage
+          test -f dist-artifacts/Clocklm_linux_v${{ steps.app_version.outputs.version }}.tar.gz
 
       - name: Prepare Windows artifacts
         if: matrix.platform == 'windows-2025'
@@ -87,12 +97,15 @@ jobs:
           New-Item -ItemType Directory -Force -Path dist-artifacts/Clocklm_windows_v${{ steps.app_version.outputs.version }} | Out-Null
           Copy-Item src-tauri/target/release/clocklm.exe dist-artifacts/Clocklm_windows_v${{ steps.app_version.outputs.version }}/clocklm.exe
           Compress-Archive -Path dist-artifacts/Clocklm_windows_v${{ steps.app_version.outputs.version }}/* -DestinationPath dist-artifacts/Clocklm_windows_v${{ steps.app_version.outputs.version }}.zip -Force
+          if (-not (Test-Path "dist-artifacts/Clocklm_windows_v${{ steps.app_version.outputs.version }}.msi")) { throw "Missing Windows MSI artifact" }
+          if (-not (Test-Path "dist-artifacts/Clocklm_windows_v${{ steps.app_version.outputs.version }}.zip")) { throw "Missing Windows ZIP artifact" }
 
       - name: Prepare macOS artifacts
         if: matrix.platform == 'macos-15-intel'
         run: |
           mkdir -p dist-artifacts
           cp src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg dist-artifacts/Clocklm_macos_x64_v${{ steps.app_version.outputs.version }}.dmg
+          test -f dist-artifacts/Clocklm_macos_x64_v${{ steps.app_version.outputs.version }}.dmg
 
       - name: Publish release assets
         uses: softprops/action-gh-release@v2

@@ -5,6 +5,15 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+
+## [1.0.34] - 2026-04-06
+
+### Modifié
+
+ - Ajout secu N° de version
+ - Build win sécurisé
+
+
 ## [1.0.33] - 2026-04-03
 
 ### Ajouté
