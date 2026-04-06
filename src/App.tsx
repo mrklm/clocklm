@@ -283,6 +283,29 @@ function isProbablyMobileDevice() {
   return mobileUserAgent || smallTouchViewport;
 }
 
+function detectRenderEnvironment() {
+  if (typeof window === 'undefined') {
+    return {
+      isAppleWebKit: false,
+      supportsColorMix: true,
+    };
+  }
+
+  const userAgent = window.navigator.userAgent;
+  const isApplePlatform = /Macintosh|Mac OS X|iPhone|iPad|iPod/i.test(userAgent);
+  const isWebKitEngine = /AppleWebKit/i.test(userAgent);
+  const isChromiumFamily = /Chrome|Chromium|CriOS|Edg\//i.test(userAgent);
+  const supportsColorMix =
+    typeof CSS === 'undefined'
+      ? true
+      : CSS.supports?.('color', 'color-mix(in srgb, white 50%, black)') ?? true;
+
+  return {
+    isAppleWebKit: isApplePlatform && isWebKitEngine && !isChromiumFamily,
+    supportsColorMix,
+  };
+}
+
 const AUDIO_FILE_EXTENSIONS = new Set([
   'aac',
   'aif',
@@ -1186,6 +1209,16 @@ function App() {
     liveDirectoryPlaybackMode,
   );
   const themeFamily = getThemeFamily(activeThemeName);
+  const { isAppleWebKit, supportsColorMix } = detectRenderEnvironment();
+  const renderEnvironmentClasses = [
+    isAppleWebKit ? 'app-shell--apple-webkit' : '',
+    supportsColorMix ? '' : 'app-shell--no-color-mix',
+  ].filter(Boolean).join(' ');
+  const clockLayoutClasses = [
+    'clock-layout',
+    isAppleWebKit ? 'clock-layout--apple-webkit' : '',
+    supportsColorMix ? '' : 'clock-layout--no-color-mix',
+  ].filter(Boolean).join(' ');
   const themeStyle = {
     '--theme-bg': activeTheme.BG,
     '--theme-panel': activeTheme.PANEL,
@@ -1894,6 +1927,7 @@ function App() {
 
   return (
     <AppShell
+      className={renderEnvironmentClasses}
       style={themeStyle}
       appSignature={appSignature}
       appSignatureHref={APP_REPOSITORY_URL}
@@ -1922,7 +1956,7 @@ function App() {
         onChange={(event) => handleLiveDirectorySelection(event.target.files)}
         {...DIRECTORY_INPUT_ATTRIBUTES}
       />
-      <section className="clock-layout" data-theme-family={themeFamily}>
+      <section className={clockLayoutClasses} data-theme-family={themeFamily}>
         <article
           ref={displayStageRef}
           className={`display-stage-card ${

@@ -1,6 +1,7 @@
 import type { CSSProperties, PropsWithChildren } from 'react';
 
 type AppShellProps = PropsWithChildren<{
+  className?: string;
   style?: CSSProperties;
   appSignature?: string;
   appSignatureHref?: string;
@@ -8,12 +9,13 @@ type AppShellProps = PropsWithChildren<{
 
 export function AppShell({
   children,
+  className,
   style,
   appSignature,
   appSignatureHref,
 }: AppShellProps) {
   return (
-    <div className="app-shell" style={style}>
+    <div className={className ? `app-shell ${className}` : 'app-shell'} style={style}>
       {children}
       {appSignature ? (
         appSignatureHref ? (

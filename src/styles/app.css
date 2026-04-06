@@ -79,6 +79,10 @@
     linear-gradient(180deg, var(--theme-bg), color-mix(in srgb, var(--theme-bg) 72%, #000000));
 }
 
+.clock-layout--no-color-mix {
+  background: var(--theme-bg);
+}
+
 .display-stage-card {
   display: grid;
   min-height: 0;
@@ -518,6 +522,45 @@
 
 .options-menu {
   position: relative;
+}
+
+.app-shell--no-color-mix .app-signature,
+.app-shell--no-color-mix .options-button,
+.app-shell--no-color-mix .select-field--compact select,
+.app-shell--no-color-mix .text-field-input,
+.app-shell--no-color-mix .transport-button,
+.app-shell--no-color-mix .options-tab,
+.app-shell--no-color-mix .live-player-button-icon,
+.app-shell--no-color-mix .live-audio-summary,
+.app-shell--no-color-mix .station-combobox-button,
+.app-shell--no-color-mix .station-combobox-panel,
+.app-shell--no-color-mix .station-search-input,
+.app-shell--no-color-mix .station-suggestion {
+  color: var(--theme-field-fg);
+  background: var(--theme-field);
+  border-color: var(--theme-panel);
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+.app-shell--no-color-mix .options-panel,
+.app-shell--no-color-mix .live-player-panel {
+  background: var(--theme-panel);
+  border-color: var(--theme-field);
+  backdrop-filter: none;
+}
+
+.app-shell--no-color-mix .options-header-version,
+.app-shell--no-color-mix .field-label,
+.app-shell--no-color-mix .field-hint,
+.app-shell--no-color-mix .live-player-collapsed-summary span:first-child,
+.app-shell--no-color-mix .live-player-collapsed-summary span:last-child {
+  color: var(--theme-fg);
+}
+
+.app-shell--no-color-mix .options-tab--active,
+.app-shell--no-color-mix .transport-button-icon--active {
+  color: var(--theme-accent);
 }
 
 .options-button,
@@ -1052,6 +1095,12 @@
   border: none;
 }
 
+.clock-layout--apple-webkit .three-preview,
+.clock-layout--apple-webkit .segment-preview,
+.clock-layout--apple-webkit .flip-preview {
+  min-height: 100vh;
+}
+
 .clock-layout[data-theme-family='light'] .display-stage-card[data-display-id='analog'],
 .clock-layout[data-theme-family='light'] .three-preview {
   background:
@@ -1098,6 +1147,10 @@
   padding: clamp(3.75rem, 7vh, 5.5rem) clamp(1rem, 2vw, 1.5rem) clamp(1.5rem, 3vh, 2.5rem);
 }
 
+.clock-layout--apple-webkit .analog-fallback__stage {
+  padding: clamp(4.8rem, 10vh, 7rem) clamp(1rem, 2vw, 1.75rem) clamp(2rem, 5vh, 3rem);
+}
+
 .analog-fallback__svg {
   width: min(72vw, calc(100dvh - 7.5rem), 34rem);
   max-width: 100%;
@@ -1105,6 +1158,35 @@
   aspect-ratio: 1;
   overflow: visible;
   filter: drop-shadow(0 1.4rem 3rem color-mix(in srgb, black 30%, transparent));
+}
+
+.clock-layout--apple-webkit .analog-fallback__svg {
+  width: min(60vw, calc(100vh - 10rem), 29rem);
+}
+
+.clock-layout--no-color-mix .analog-fallback__rim {
+  fill: var(--analog-fallback-accent);
+}
+
+.clock-layout--no-color-mix .analog-fallback__face {
+  stroke: var(--analog-fallback-panel);
+}
+
+.clock-layout--no-color-mix .analog-fallback__marker {
+  stroke: var(--analog-fallback-fg);
+  opacity: 0.55;
+}
+
+.clock-layout--no-color-mix .analog-fallback__date-box,
+.clock-layout--no-color-mix .analog-fallback__center-dot,
+.clock-layout--no-color-mix .analog-fallback__mini-ring {
+  fill: var(--analog-fallback-accent);
+}
+
+.clock-layout--no-color-mix .analog-fallback__hand--second,
+.clock-layout--no-color-mix .analog-fallback__date-line {
+  stroke: var(--analog-fallback-fg);
+  fill: var(--analog-fallback-fg);
 }
 
 .analog-fallback__rim {
@@ -1226,6 +1308,16 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
+.clock-layout--apple-webkit .segment-preview {
+  justify-content: center;
+  padding-top: clamp(3.8rem, 9vh, 5.8rem);
+  padding-bottom: clamp(1.4rem, 4vh, 2.4rem);
+}
+
+.clock-layout--no-color-mix .segment-preview {
+  background: #050505;
+}
+
 .clock-layout[data-theme-family='light'] .segment-preview {
   background:
     radial-gradient(circle at 50% 12%, color-mix(in srgb, var(--theme-accent) 12%, transparent), transparent 34%),
@@ -1233,6 +1325,11 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.34),
     inset 0 -20px 32px color-mix(in srgb, var(--theme-panel) 12%, transparent);
+}
+
+.clock-layout--no-color-mix[data-theme-family='light'] .segment-preview {
+  background: linear-gradient(180deg, var(--theme-field) 0%, var(--theme-bg) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.34);
 }
 
 .clock-layout[data-theme-family='playful'] .segment-preview {
@@ -1248,6 +1345,10 @@
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, white 24%, transparent),
     inset 0 -24px 40px color-mix(in srgb, var(--theme-panel) 18%, transparent);
+}
+
+.clock-layout--no-color-mix[data-theme-family='playful'] .segment-preview {
+  background: linear-gradient(160deg, var(--theme-bg) 0%, var(--theme-panel) 55%, var(--theme-field) 100%);
 }
 
 .segment-row {
@@ -1338,12 +1439,23 @@
   transition: fill 180ms ease, filter 180ms ease, opacity 180ms ease;
 }
 
+.clock-layout--no-color-mix .segment-shape {
+  fill: var(--theme-panel);
+  stroke: none;
+  opacity: 0.5;
+}
+
 .segment-shape.on {
   fill: var(--theme-accent);
   opacity: 1;
   filter:
     drop-shadow(0 0 3px color-mix(in srgb, var(--theme-accent) 38%, transparent))
     drop-shadow(0 0 8px color-mix(in srgb, var(--theme-accent) 9%, transparent));
+}
+
+.clock-layout--no-color-mix .segment-shape.on {
+  fill: var(--theme-accent);
+  filter: none;
 }
 
 .clock-layout[data-theme-family='playful'] .segment-shape {
@@ -1357,6 +1469,11 @@
   filter:
     drop-shadow(0 0 5px color-mix(in srgb, var(--theme-accent) 62%, transparent))
     drop-shadow(0 0 16px color-mix(in srgb, var(--theme-field) 24%, transparent));
+}
+
+.clock-layout--no-color-mix .segment-colon span {
+  background: var(--theme-accent);
+  box-shadow: none;
 }
 
 .clock-layout[data-theme-family='playful'] .segment-colon span {
