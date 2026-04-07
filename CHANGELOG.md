@@ -5,6 +5,14 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.40] - 2026-04-06
+
+### Ajouté
+
+ - Ajout d'une fonction VU-mètre
+ - Ré organisation fenetre options pour le mode d'affichage du vu metre
+
+
 ## [1.0.39] - 2026-04-06
 
 ### Modifié

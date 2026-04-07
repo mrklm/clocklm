@@ -26,6 +26,22 @@ type LiveAudioSource = 'radio' | 'directory';
 type LiveDirectoryPlaybackMode = 'normal' | 'repeat' | 'shuffle';
 type OptionsTabId = 'appearance' | 'music' | 'alarms';
 type AlarmMode = 'visual' | 'radio' | 'file';
+type VuMeterMode = 'floating' | 'integrated';
+type VuMeterDisplay = 'clock' | 'vu-meter' | 'clock-and-vu-meter';
+type VuMeterStyle =
+  | 'needle-duo'
+  | 'led-mono'
+  | 'led-stereo'
+  | 'spectrum-rainbow'
+  | 'wave-scope'
+  | 'mini-bars';
+type VuMeterWindowPayload = {
+  style: VuMeterStyle;
+  levels: number[];
+  waveform: number[];
+  theme: ThemePalette;
+  playing: boolean;
+};
 type AlarmDefinition = {
   id: string;
   time: string;
@@ -53,6 +69,319 @@ type LautFmCurrentSong = {
   artistName: string;
   title: string;
 };
+
+const STREAM_FETCH_TIMEOUT_MS = 5000;
+const STREAM_PLAY_TIMEOUT_MS = 7000;
+const VU_METER_WINDOW_LABEL = 'vu-meter-window';
+const VU_METER_EVENT = 'clocklm://vu-meter';
+const VU_METER_STYLE_OPTIONS: Array<{ value: VuMeterStyle; label: string }> = [
+  { value: 'needle-duo', label: 'A aiguilles' },
+  { value: 'led-mono', label: 'A leds mono' },
+  { value: 'led-stereo', label: 'A leds multi-colonnes' },
+  { value: 'spectrum-rainbow', label: 'Spectre arc-en-ciel' },
+  { value: 'wave-scope', label: 'Forme d onde' },
+  { value: 'mini-bars', label: 'Mini barres' },
+];
+const VU_METER_DISPLAY_OPTIONS: Array<{ value: VuMeterDisplay; label: string }> = [
+  { value: 'clock', label: 'Heure' },
+  { value: 'vu-meter', label: 'VU-metre' },
+  { value: 'clock-and-vu-meter', label: 'Heure + VU-metre' },
+];
+
+function clamp01(value: number) {
+  return Math.max(0, Math.min(1, value));
+}
+
+function isVuMeterWindowView() {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const locationUrl = new URL(window.location.href);
+  if (
+    locationUrl.searchParams.get('view') === 'vu-meter' ||
+    locationUrl.hash === '#vu-meter' ||
+    locationUrl.pathname.endsWith('/vu-meter')
+  ) {
+    return true;
+  }
+
+  const tauriLabel = (window as Window & {
+    __TAURI_INTERNALS__?: {
+      metadata?: {
+        currentWebview?: {
+          label?: string;
+        };
+      };
+    };
+  }).__TAURI_INTERNALS__?.metadata?.currentWebview?.label;
+
+  return tauriLabel === VU_METER_WINDOW_LABEL;
+}
+
+function isTauriRuntime() {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  return '__TAURI_INTERNALS__' in window;
+}
+
+function sampleWaveform(values: Uint8Array, points = 48) {
+  if (values.length === 0 || points <= 0) {
+    return [];
+  }
+
+  return Array.from({ length: points }, (_, index) => {
+    const sampleIndex = Math.min(
+      values.length - 1,
+      Math.floor((index / Math.max(points - 1, 1)) * values.length),
+    );
+    return clamp01(values[sampleIndex] / 255);
+  });
+}
+
+function buildVuMeterColumns(values: Uint8Array, columns = 16) {
+  if (values.length === 0 || columns <= 0) {
+    return [];
+  }
+
+  const bucketSize = Math.max(1, Math.floor(values.length / columns));
+
+  return Array.from({ length: columns }, (_, index) => {
+    const start = index * bucketSize;
+    const end = index === columns - 1 ? values.length : Math.min(values.length, start + bucketSize);
+    let sum = 0;
+
+    for (let cursor = start; cursor < end; cursor += 1) {
+      sum += values[cursor] ?? 0;
+    }
+
+    const average = sum / Math.max(end - start, 1);
+    return clamp01(average / 255);
+  });
+}
+
+function VuMeter({
+  enabled,
+  mode,
+  style,
+  levels,
+  waveform,
+  windowed = false,
+}: {
+  enabled: boolean;
+  mode: VuMeterMode;
+  style: VuMeterStyle;
+  levels: number[];
+  waveform: number[];
+  windowed?: boolean;
+}) {
+  if (!enabled) {
+    return null;
+  }
+
+  const isFloating = mode === 'floating';
+  const isIdle = levels.length === 0;
+  const leftLevel = levels[0] ?? 0.08;
+  const rightLevel = levels[1] ?? leftLevel;
+  const barLevels = levels.length > 0 ? levels : Array.from({ length: 20 }, (_, index) =>
+    index % 4 === 0 ? 0.14 : 0.08,
+  );
+  const waveformPath = waveform
+    .map((value, index) => {
+      const x = waveform.length <= 1 ? 0 : (index / (waveform.length - 1)) * 100;
+      const y = 90 - value * 80;
+      return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(' ');
+
+  return (
+    <div
+      className={`vu-meter vu-meter--${mode} vu-meter--${style}${isIdle ? ' vu-meter--idle' : ''}${windowed ? ' vu-meter--windowed' : ''}`}
+      aria-hidden="true"
+    >
+      {style === 'needle-duo' ? (
+        <div className="vu-meter-needles">
+          {[leftLevel, rightLevel].map((level, index) => (
+            <div key={index} className="vu-meter-needle-dial">
+              <div className="vu-meter-needle-arc" />
+              <div
+                className="vu-meter-needle"
+                style={{ transform: `rotate(${level * 96 - 48}deg)` }}
+              />
+              <div className="vu-meter-needle-pivot" />
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {style === 'led-mono' ? (
+        <div className="vu-meter-led-stack">
+          {Array.from({ length: 18 }, (_, index) => {
+            const threshold = (index + 1) / 18;
+            return (
+              <span
+                key={index}
+                className={`vu-meter-led${leftLevel >= threshold ? ' is-active' : ''}`}
+              />
+            );
+          })}
+        </div>
+      ) : null}
+
+      {style === 'led-stereo' ? (
+        <div className="vu-meter-columns">
+          {barLevels.map((level, index) => (
+            <div key={index} className="vu-meter-column">
+              {Array.from({ length: 14 }, (_, ledIndex) => {
+                const threshold = (ledIndex + 1) / 14;
+                return (
+                  <span
+                    key={ledIndex}
+                    className={`vu-meter-led vu-meter-led--column${level >= threshold ? ' is-active' : ''}`}
+                  />
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {style === 'spectrum-rainbow' ? (
+        <div className="vu-meter-spectrum">
+          {barLevels.map((level, index) => (
+            <span
+              key={index}
+              className="vu-meter-spectrum-bar"
+              style={{
+                height: `${Math.max(10, level * 100)}%`,
+                '--vu-meter-hue': `${(index / Math.max(barLevels.length - 1, 1)) * 320}`,
+              } as CSSProperties}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      {style === 'wave-scope' ? (
+        <svg className="vu-meter-wave" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <path d={waveformPath || 'M 0 56 L 10 52 L 20 55 L 30 50 L 40 54 L 50 49 L 60 53 L 70 51 L 80 55 L 90 52 L 100 56'} />
+        </svg>
+      ) : null}
+
+      {style === 'mini-bars' ? (
+        <div className={`vu-meter-mini-bars${isFloating ? ' vu-meter-mini-bars--compact' : ''}`}>
+          {barLevels.slice(0, isFloating ? 12 : 20).map((level, index) => (
+            <span
+              key={index}
+              className="vu-meter-mini-bar"
+              style={{ height: `${Math.max(14, level * 100)}%` }}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function VuMeterWindowApp() {
+  const [payload, setPayload] = useState<VuMeterWindowPayload | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    let unlisten: (() => Promise<void>) | null = null;
+
+    void Promise.all([
+      import('@tauri-apps/api/core'),
+      import('@tauri-apps/api/event'),
+      import('@tauri-apps/api/window'),
+    ]).then(async ([coreApi, eventApi, windowApi]) => {
+      if (!coreApi.isTauri()) {
+        return;
+      }
+
+      const currentWindow = windowApi.getCurrentWindow();
+      setIsFullscreen(await currentWindow.isFullscreen());
+      unlisten = await eventApi.listen<VuMeterWindowPayload>(VU_METER_EVENT, (event) => {
+        setPayload(event.payload);
+      });
+    }).catch(() => {});
+
+    return () => {
+      if (unlisten) {
+        void unlisten();
+      }
+    };
+  }, []);
+
+  const theme = payload?.theme ?? THEMES[DEFAULT_THEME_NAME];
+
+  const handleMinimize = async () => {
+    const [coreApi, windowApi] = await Promise.all([
+      import('@tauri-apps/api/core'),
+      import('@tauri-apps/api/window'),
+    ]);
+    if (!coreApi.isTauri()) {
+      return;
+    }
+    await windowApi.getCurrentWindow().minimize();
+  };
+
+  const handleToggleFullscreen = async () => {
+    const [coreApi, windowApi] = await Promise.all([
+      import('@tauri-apps/api/core'),
+      import('@tauri-apps/api/window'),
+    ]);
+    if (!coreApi.isTauri()) {
+      return;
+    }
+    const currentWindow = windowApi.getCurrentWindow();
+    const nextFullscreen = !(await currentWindow.isFullscreen());
+    await currentWindow.setFullscreen(nextFullscreen);
+    setIsFullscreen(nextFullscreen);
+  };
+
+  return (
+    <div
+      className="vu-meter-window"
+      style={
+        {
+          '--theme-bg': theme.BG,
+          '--theme-panel': theme.PANEL,
+          '--theme-field': theme.FIELD,
+          '--theme-fg': theme.FG,
+          '--theme-field-fg': theme.FIELD_FG,
+          '--theme-accent': theme.ACCENT,
+        } as CSSProperties
+      }
+    >
+      <div className="vu-meter-window__toolbar">
+        <div className="vu-meter-window__title-group">
+          <span className="vu-meter-window__eyebrow">Clock.l.m</span>
+          <strong className="vu-meter-window__title">VU-metre</strong>
+        </div>
+        <div className="vu-meter-window__actions">
+          <button type="button" className="vu-meter-window__button" onClick={() => void handleMinimize()}>
+            Reduire
+          </button>
+          <button type="button" className="vu-meter-window__button" onClick={() => void handleToggleFullscreen()}>
+            {isFullscreen ? 'Fenetre' : 'Plein ecran'}
+          </button>
+        </div>
+      </div>
+      <div className="vu-meter-window__content">
+        <VuMeter
+          enabled
+          mode="floating"
+          style={payload?.style ?? 'needle-duo'}
+          levels={payload?.levels ?? []}
+          waveform={payload?.waveform ?? []}
+          windowed
+        />
+      </div>
+    </div>
+  );
+}
 
 function createLautFmStation(id: string, name: string, style: string): LautFmStation {
   return {
@@ -367,7 +696,14 @@ async function resolveStreamUrl(sourceUrl: string) {
     return trimmedUrl;
   }
 
-  const response = await fetch(trimmedUrl);
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), STREAM_FETCH_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(trimmedUrl, { signal: controller.signal });
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
   if (!response.ok) {
     throw new Error('playlist_fetch_failed');
   }
@@ -430,10 +766,16 @@ async function playAudioFromCandidates(
     const audio = new Audio();
     audio.preload = options?.preload ?? 'none';
     audio.loop = options?.loop ?? false;
+    audio.crossOrigin = 'anonymous';
     audio.src = candidateUrl;
 
     try {
-      await audio.play();
+      await Promise.race([
+        audio.play(),
+        new Promise<never>((_, reject) => {
+          window.setTimeout(() => reject(new Error('audio_play_timeout')), STREAM_PLAY_TIMEOUT_MS);
+        }),
+      ]);
       return audio;
     } catch (error) {
       lastError = error;
@@ -970,6 +1312,10 @@ function readStoredAlarmSettings() {
       use24HourFormat?: boolean;
       activeDisplayId?: ClockDisplayId;
       activeThemeName?: string;
+      vuMeterEnabled?: boolean;
+      vuMeterDisplay?: VuMeterDisplay;
+      vuMeterMode?: VuMeterMode;
+      vuMeterStyle?: VuMeterStyle;
     };
   } catch {
     return null;
@@ -1010,10 +1356,23 @@ function App() {
   const [activeThemeName, setActiveThemeName] = useState(() =>
     getStoredThemeName(storedAlarmSettings?.activeThemeName),
   );
+  const [isTauriApp, setIsTauriApp] = useState(() => isTauriRuntime());
   const [showDate, setShowDate] = useState(storedAlarmSettings?.showDate ?? false);
   const [use24HourFormat, setUse24HourFormat] = useState(
     storedAlarmSettings?.use24HourFormat ?? true,
   );
+  const [vuMeterEnabled, setVuMeterEnabled] = useState(false);
+  const [vuMeterDisplay, setVuMeterDisplay] = useState<VuMeterDisplay>(
+    storedAlarmSettings?.vuMeterDisplay ?? 'clock',
+  );
+  const [vuMeterMode, setVuMeterMode] = useState<VuMeterMode>(
+    storedAlarmSettings?.vuMeterMode ?? 'floating',
+  );
+  const [vuMeterStyle, setVuMeterStyle] = useState<VuMeterStyle>(
+    storedAlarmSettings?.vuMeterStyle ?? 'needle-duo',
+  );
+  const [vuMeterLevels, setVuMeterLevels] = useState<number[]>([]);
+  const [vuMeterWaveform, setVuMeterWaveform] = useState<number[]>([]);
   const [appSignature, setAppSignature] = useState(APP_SIGNATURE_FALLBACK);
   const [isMobileSplashVisible, setIsMobileSplashVisible] = useState(isProbablyMobileDevice);
   const [alarms, setAlarms] = useState<AlarmDefinition[]>(
@@ -1036,7 +1395,7 @@ function App() {
     storedAlarmSettings?.liveAudioSource ?? 'radio',
   );
   const [liveRadioPlaybackState, setLiveRadioPlaybackState] = useState<
-    'idle' | 'playing' | 'paused' | 'error'
+    'idle' | 'loading' | 'playing' | 'paused' | 'error'
   >('idle');
   const [liveRadioCurrentSong, setLiveRadioCurrentSong] =
     useState<LautFmCurrentSong | null>(null);
@@ -1063,6 +1422,11 @@ function App() {
   const triggeredAlarmKeysRef = useRef<Set<string>>(new Set());
   const liveRadioAudioRef = useRef<HTMLAudioElement | null>(null);
   const liveDirectoryInputRef = useRef<HTMLInputElement | null>(null);
+  const vuMeterAudioContextRef = useRef<AudioContext | null>(null);
+  const vuMeterAnalyserRef = useRef<AnalyserNode | null>(null);
+  const vuMeterSourceRef = useRef<AudioNode | null>(null);
+  const vuMeterConnectedAudioRef = useRef<HTMLAudioElement | null>(null);
+  const vuMeterFrameRef = useRef<number | null>(null);
   const liveDirectoryObjectUrlsRef = useRef<string[]>([]);
   const liveDirectoryTrackIndexRef = useRef(0);
   const liveDirectoryPlaybackModeRef = useRef<LiveDirectoryPlaybackMode>('normal');
@@ -1220,14 +1584,19 @@ function App() {
     liveAudioSource === 'radio'
       ? selectedLiveRadioStation.name
       : liveDirectoryTrackLabel || liveDirectoryName || 'Aucun dossier audio selectionne';
-  const livePlaybackActive = liveRadioPlaybackState === 'playing' || liveRadioPlaybackState === 'paused';
+  const livePlaybackActive =
+    liveRadioPlaybackState === 'loading'
+    || liveRadioPlaybackState === 'playing'
+    || liveRadioPlaybackState === 'paused';
   const playerSummaryPrimary =
     liveAudioSource === 'radio'
       ? selectedLiveRadioStation.name
       : liveDirectoryName || 'Musique locale';
   const playerSummarySecondary =
     liveAudioSource === 'radio'
-      ? liveRadioCurrentSongLabel || 'Artiste et morceau indisponibles'
+      ? liveRadioPlaybackState === 'loading'
+        ? 'Connexion au flux...'
+        : liveRadioCurrentSongLabel || 'Artiste et morceau indisponibles'
       : liveDirectoryTrackLabel || 'Lecture locale en cours';
   const nextLiveDirectoryPlaybackMode = getNextLiveDirectoryPlaybackMode(
     liveDirectoryPlaybackMode,
@@ -1243,6 +1612,10 @@ function App() {
     isAppleWebKit ? 'clock-layout--apple-webkit' : '',
     supportsColorMix ? '' : 'clock-layout--no-color-mix',
   ].filter(Boolean).join(' ');
+  const shouldUseExternalVuMeterWindow =
+    vuMeterEnabled && vuMeterMode === 'floating' && isTauriApp && !isVuMeterWindowView();
+  const shouldShowClockDisplay = !vuMeterEnabled || vuMeterDisplay !== 'vu-meter';
+  const shouldShowVuMeterDisplay = vuMeterEnabled && vuMeterDisplay !== 'clock';
   const themeStyle = {
     '--theme-bg': activeTheme.BG,
     '--theme-panel': activeTheme.PANEL,
@@ -1491,6 +1864,10 @@ function App() {
   };
 
   const startLiveRadioPlayback = async () => {
+    if (liveRadioPlaybackState === 'loading') {
+      return;
+    }
+
     if (
       liveRadioPlaybackState === 'paused' &&
       liveRadioAudioRef.current &&
@@ -1508,9 +1885,13 @@ function App() {
 
     stopLiveRadioPlayback();
     stopAlarmPlayback();
+    setLiveRadioPlaybackState('loading');
 
     try {
       const candidateUrls = await prepareStationStreamUrls(selectedLiveRadioStation);
+      if (candidateUrls.length === 0) {
+        throw new Error('station_stream_unavailable');
+      }
       const audio = await playAudioFromCandidates(candidateUrls, {
         preload: 'none',
       });
@@ -1574,6 +1955,7 @@ function App() {
       audio.onended = null;
       audio.onerror = null;
       audio.preload = 'auto';
+      audio.crossOrigin = 'anonymous';
 
       if (audio.src !== objectUrl) {
         audio.src = objectUrl;
@@ -1751,6 +2133,14 @@ function App() {
   };
 
   useEffect(() => {
+    void import('@tauri-apps/api/core').then((coreApi) => {
+      setIsTauriApp(coreApi.isTauri());
+    }).catch(() => {
+      setIsTauriApp(false);
+    });
+  }, []);
+
+  useEffect(() => {
     return () => {
       stopAlarmPlayback();
       stopLiveRadioPlayback();
@@ -1767,6 +2157,9 @@ function App() {
         liveRadioStationId,
         showDate,
         use24HourFormat,
+        vuMeterDisplay,
+        vuMeterMode,
+        vuMeterStyle,
         activeDisplayId,
         activeThemeName,
       }),
@@ -1778,6 +2171,9 @@ function App() {
     liveRadioStationId,
     showDate,
     use24HourFormat,
+    vuMeterDisplay,
+    vuMeterMode,
+    vuMeterStyle,
     activeDisplayId,
     activeThemeName,
   ]);
@@ -1836,7 +2232,11 @@ function App() {
   }, [liveAudioSource, liveDirectoryFiles]);
 
   useEffect(() => {
-    if (liveAudioSource !== 'radio' || !supportsStationCurrentSong(selectedLiveRadioStation)) {
+    if (
+      liveAudioSource !== 'radio'
+      || liveRadioPlaybackState !== 'playing'
+      || !supportsStationCurrentSong(selectedLiveRadioStation)
+    ) {
       setLiveRadioCurrentSong(null);
       return;
     }
@@ -1870,13 +2270,195 @@ function App() {
         window.clearInterval(refreshTimer);
       }
     };
-  }, [liveAudioSource, selectedLiveRadioStation.id]);
+  }, [liveAudioSource, liveRadioPlaybackState, selectedLiveRadioStation.id]);
 
   useEffect(() => {
     return () => {
       clearLiveDirectoryObjectUrls();
     };
   }, []);
+
+  useEffect(() => {
+    const activeAudio = liveRadioAudioRef.current;
+
+    if (!vuMeterEnabled || !activeAudio || liveRadioPlaybackState !== 'playing') {
+      if (vuMeterFrameRef.current !== null) {
+        window.cancelAnimationFrame(vuMeterFrameRef.current);
+        vuMeterFrameRef.current = null;
+      }
+      setVuMeterLevels([]);
+      setVuMeterWaveform([]);
+      return;
+    }
+
+    try {
+      const AudioContextCtor = window.AudioContext ?? (window as typeof window & {
+        webkitAudioContext?: typeof AudioContext;
+      }).webkitAudioContext;
+
+      if (!AudioContextCtor) {
+        return;
+      }
+
+      const audioContext =
+        vuMeterAudioContextRef.current ?? new AudioContextCtor();
+      vuMeterAudioContextRef.current = audioContext;
+
+      if (audioContext.state === 'suspended') {
+        void audioContext.resume();
+      }
+
+      if (vuMeterConnectedAudioRef.current !== activeAudio) {
+        vuMeterSourceRef.current?.disconnect();
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.82;
+        type CaptureCapableAudio = HTMLAudioElement & {
+          captureStream?: () => MediaStream;
+          mozCaptureStream?: () => MediaStream;
+        };
+
+        const captureAudio = activeAudio as CaptureCapableAudio;
+        const capturedStreamCandidate =
+          captureAudio.captureStream?.()
+          ?? captureAudio.mozCaptureStream?.()
+          ?? null;
+        const capturedStream =
+          capturedStreamCandidate && capturedStreamCandidate.getAudioTracks().length > 0
+            ? capturedStreamCandidate
+            : null;
+
+        const source = capturedStream
+          ? audioContext.createMediaStreamSource(capturedStream)
+          : audioContext.createMediaElementSource(activeAudio);
+
+        source.connect(analyser);
+        if (!capturedStream) {
+          analyser.connect(audioContext.destination);
+        }
+        vuMeterSourceRef.current = source;
+        vuMeterAnalyserRef.current = analyser;
+        vuMeterConnectedAudioRef.current = activeAudio;
+      }
+
+      const analyser = vuMeterAnalyserRef.current;
+      if (!analyser) {
+        return;
+      }
+
+      const frequencyData = new Uint8Array(analyser.frequencyBinCount);
+      const waveformData = new Uint8Array(analyser.fftSize);
+
+      const updateMeter = () => {
+        analyser.getByteFrequencyData(frequencyData);
+        analyser.getByteTimeDomainData(waveformData);
+
+        const frequencyLevels = buildVuMeterColumns(frequencyData, 20);
+        const stereoLevels = [
+          Math.max(...frequencyLevels.slice(0, Math.max(1, Math.floor(frequencyLevels.length / 2))), 0),
+          Math.max(...frequencyLevels.slice(Math.max(1, Math.floor(frequencyLevels.length / 2))), 0),
+        ];
+
+        setVuMeterLevels(frequencyLevels.length > 0 ? frequencyLevels : stereoLevels);
+        setVuMeterWaveform(sampleWaveform(waveformData, 52));
+        vuMeterFrameRef.current = window.requestAnimationFrame(updateMeter);
+      };
+
+      updateMeter();
+
+      return () => {
+        if (vuMeterFrameRef.current !== null) {
+          window.cancelAnimationFrame(vuMeterFrameRef.current);
+          vuMeterFrameRef.current = null;
+        }
+      };
+    } catch {
+      setVuMeterLevels([]);
+      setVuMeterWaveform([]);
+    }
+  }, [liveRadioPlaybackState, vuMeterEnabled]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void Promise.all([
+      import('@tauri-apps/api/core'),
+      import('@tauri-apps/api/webviewWindow'),
+    ]).then(async ([coreApi, webviewWindowApi]) => {
+      if (!coreApi.isTauri()) {
+        return;
+      }
+
+      const existingWindow = await webviewWindowApi.WebviewWindow.getByLabel(VU_METER_WINDOW_LABEL);
+
+      if (!shouldUseExternalVuMeterWindow) {
+        await existingWindow?.hide().catch(() => {});
+        return;
+      }
+
+      if (existingWindow) {
+        await existingWindow.setDecorations(true).catch(() => {});
+        await existingWindow.show().catch(() => {});
+        await existingWindow.setFocus().catch(() => {});
+        return;
+      }
+
+      const vuUrl = new URL('vu-meter.html', window.location.href);
+
+      const vuWindow = new webviewWindowApi.WebviewWindow(VU_METER_WINDOW_LABEL, {
+        url: vuUrl.toString(),
+        title: 'Clocklm VU-metre',
+        width: 560,
+        height: 320,
+        minWidth: 360,
+        minHeight: 220,
+        resizable: true,
+        decorations: true,
+        titleBarStyle: 'visible',
+        center: true,
+        focus: true,
+      });
+      void vuWindow.once('tauri://error', (error) => {
+        console.error('Clocklm: impossible de creer la fenetre flottante du VU-metre.', error);
+      });
+    }).catch((error) => {
+      console.error('Clocklm: creation de la fenetre flottante indisponible.', error);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [shouldUseExternalVuMeterWindow]);
+
+  useEffect(() => {
+    if (!shouldUseExternalVuMeterWindow) {
+      return;
+    }
+
+    void Promise.all([
+      import('@tauri-apps/api/core'),
+      import('@tauri-apps/api/event'),
+    ]).then(async ([coreApi, eventApi]) => {
+      if (!coreApi.isTauri()) {
+        return;
+      }
+
+      await eventApi.emit(VU_METER_EVENT, {
+        style: vuMeterStyle,
+        levels: vuMeterLevels,
+        waveform: vuMeterWaveform,
+        theme: activeTheme,
+        playing: liveRadioPlaybackState === 'playing',
+      } satisfies VuMeterWindowPayload);
+    }).catch(() => {});
+  }, [
+    activeTheme,
+    liveRadioPlaybackState,
+    shouldUseExternalVuMeterWindow,
+    vuMeterLevels,
+    vuMeterStyle,
+    vuMeterWaveform,
+  ]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -2001,6 +2583,14 @@ function App() {
             </div>
           ) : null}
 
+          <VuMeter
+            enabled={shouldShowVuMeterDisplay && vuMeterMode === 'integrated'}
+            mode={vuMeterMode}
+            style={vuMeterStyle}
+            levels={vuMeterLevels}
+            waveform={vuMeterWaveform}
+          />
+
           <details
             ref={playerMenuRef}
             className="live-radio-controls"
@@ -2085,8 +2675,11 @@ function App() {
                   title={
                     liveRadioPlaybackState === 'playing'
                       ? 'Mettre la lecture en pause'
+                      : liveRadioPlaybackState === 'loading'
+                        ? 'Connexion au flux en cours'
                       : 'Lire la selection'
                   }
+                  disabled={liveRadioPlaybackState === 'loading'}
                   onClick={() => {
                     if (liveRadioPlaybackState === 'playing') {
                       pauseLiveRadioPlayback();
@@ -2095,14 +2688,14 @@ function App() {
 
                     void startLivePlayback();
                   }}
-                >
+                  >
                   <span
                     className={`transport-button-icon${
                       liveRadioPlaybackState === 'playing' ? '' : ' transport-button-icon--active'
                     }`}
                     aria-hidden="true"
                   >
-                    ▶
+                    {liveRadioPlaybackState === 'loading' ? '…' : '▶'}
                   </span>
                   <span
                     className={`transport-button-icon${
@@ -2271,18 +2864,89 @@ function App() {
                       </select>
                     </label>
 
-                    <label className="field-label field-label--checkbox-row" htmlFor="show-date-checkbox">
-                      <input
-                        id="show-date-checkbox"
-                        type="checkbox"
-                        checked={showDate}
-                        onChange={(event) => setShowDate(event.target.checked)}
-                      />
-                      <span>Afficher la date</span>
-                    </label>
+	                    <label className="field-label field-label--checkbox-row" htmlFor="show-date-checkbox">
+	                      <input
+	                        id="show-date-checkbox"
+	                        type="checkbox"
+	                        checked={showDate}
+	                        onChange={(event) => setShowDate(event.target.checked)}
+	                      />
+	                      <span>Afficher la date</span>
+	                    </label>
 
-                    <label className="field-label field-label--checkbox-row" htmlFor="time-format-checkbox">
-                      <input
+	                    <label className="field-label field-label--checkbox-row" htmlFor="vu-meter-checkbox">
+	                      <input
+	                        id="vu-meter-checkbox"
+	                        type="checkbox"
+	                        checked={vuMeterEnabled}
+	                        onChange={(event) => setVuMeterEnabled(event.target.checked)}
+	                      />
+	                      <span>VU-metre</span>
+	                    </label>
+
+	                    {vuMeterEnabled ? (
+	                      <>
+	                        <label
+	                          className="select-field select-field--compact"
+	                          htmlFor="vu-meter-display-select"
+	                        >
+	                          <span className="field-label">Affichage</span>
+	                          <select
+	                            id="vu-meter-display-select"
+	                            value={vuMeterDisplay}
+	                            onChange={(event) =>
+	                              setVuMeterDisplay(event.target.value as VuMeterDisplay)
+	                            }
+	                          >
+	                            {VU_METER_DISPLAY_OPTIONS.map((option) => (
+	                              <option key={option.value} value={option.value}>
+	                                {option.label}
+	                              </option>
+	                            ))}
+	                          </select>
+	                        </label>
+
+	                        <label
+	                          className="select-field select-field--compact"
+	                          htmlFor="vu-meter-mode-select"
+	                        >
+	                          <span className="field-label">Mode VU-metre</span>
+	                          <select
+	                            id="vu-meter-mode-select"
+	                            value={vuMeterMode}
+	                            onChange={(event) =>
+	                              setVuMeterMode(event.target.value as VuMeterMode)
+	                            }
+	                          >
+	                            <option value="floating">Flottant</option>
+	                            <option value="integrated">Integre</option>
+	                          </select>
+	                        </label>
+
+	                        <label
+	                          className="select-field select-field--compact"
+	                          htmlFor="vu-meter-style-select"
+	                        >
+	                          <span className="field-label">Type de VU-metre</span>
+	                          <select
+	                            id="vu-meter-style-select"
+	                            value={vuMeterStyle}
+	                            onChange={(event) =>
+	                              setVuMeterStyle(event.target.value as VuMeterStyle)
+	                            }
+	                          >
+	                            {VU_METER_STYLE_OPTIONS.map((option) => (
+	                              <option key={option.value} value={option.value}>
+	                                {option.label}
+	                              </option>
+	                            ))}
+	                          </select>
+	                        </label>
+	                      </>
+	                    ) : null}
+
+	                    <label className="field-label field-label--checkbox-row" htmlFor="time-format-checkbox">
+	                      <input
                         id="time-format-checkbox"
                         type="checkbox"
                         checked={use24HourFormat}
@@ -2536,17 +3200,30 @@ function App() {
             </details>
           </div>
 
-          {renderActiveDisplay(
-            activeDisplay,
-            currentTime,
-            activeTheme,
-            alarms.map((alarm) => alarm.color),
-            analogAlarmPreviews,
-            showDate,
-            use24HourFormat,
-          )}
+          {shouldShowClockDisplay
+            ? renderActiveDisplay(
+              activeDisplay,
+              currentTime,
+              activeTheme,
+              alarms.map((alarm) => alarm.color),
+              analogAlarmPreviews,
+              showDate,
+              use24HourFormat,
+            )
+            : null}
         </article>
       </section>
+      <VuMeter
+        enabled={
+          shouldShowVuMeterDisplay
+          && vuMeterMode === 'floating'
+          && !shouldUseExternalVuMeterWindow
+        }
+        mode={vuMeterMode}
+        style={vuMeterStyle}
+        levels={vuMeterLevels}
+        waveform={vuMeterWaveform}
+      />
     </AppShell>
   );
 }
