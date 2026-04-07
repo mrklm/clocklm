@@ -289,7 +289,7 @@ export function VuMeterWindowApp() {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
-    let unlisten: (() => Promise<void>) | null = null;
+    let unlisten: (() => void) | null = null;
 
     void Promise.all([
       import('@tauri-apps/api/core'),
@@ -2379,8 +2379,6 @@ function App() {
   }, [liveRadioPlaybackState, vuMeterEnabled]);
 
   useEffect(() => {
-    let cancelled = false;
-
     void Promise.all([
       import('@tauri-apps/api/core'),
       import('@tauri-apps/api/webviewWindow'),
@@ -2425,9 +2423,7 @@ function App() {
       console.error('Clocklm: creation de la fenetre flottante indisponible.', error);
     });
 
-    return () => {
-      cancelled = true;
-    };
+    return undefined;
   }, [shouldUseExternalVuMeterWindow]);
 
   useEffect(() => {
