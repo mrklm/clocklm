@@ -5,6 +5,19 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.41] - 2026-04-06
+
+### Modifié
+
+ - Modification des VU-mètres analogique et led mono + led strereo
+ - Changement ordre des options
+ - Integré -> fenêtres / Flottant -> Plein écran
+
+### Ajouté
+
+ - VU-mètre vintage
+  
+
 ## [1.0.40] - 2026-04-06
 
 ### Ajouté

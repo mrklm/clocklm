@@ -32,6 +32,8 @@ type VuMeterStyle =
   | 'needle-duo'
   | 'led-mono'
   | 'led-stereo'
+  | 'led-horizontal-mono'
+  | 'led-horizontal-stereo'
   | 'spectrum-rainbow'
   | 'wave-scope'
   | 'mini-bars';
@@ -75,12 +77,12 @@ const STREAM_PLAY_TIMEOUT_MS = 7000;
 const VU_METER_WINDOW_LABEL = 'vu-meter-window';
 const VU_METER_EVENT = 'clocklm://vu-meter';
 const VU_METER_STYLE_OPTIONS: Array<{ value: VuMeterStyle; label: string }> = [
-  { value: 'needle-duo', label: 'A aiguilles' },
-  { value: 'led-mono', label: 'A leds mono' },
-  { value: 'led-stereo', label: 'A leds multi-colonnes' },
-  { value: 'spectrum-rainbow', label: 'Spectre arc-en-ciel' },
+  { value: 'needle-duo', label: 'Analogique' },
+  { value: 'led-mono', label: 'Leds vertical mono' },
+  { value: 'led-stereo', label: 'Leds vertical stereo' },
+  { value: 'led-horizontal-mono', label: 'Leds horizontal mono vintage' },
+  { value: 'led-horizontal-stereo', label: 'Leds horizontal stereo vintage' },
   { value: 'wave-scope', label: 'Forme d onde' },
-  { value: 'mini-bars', label: 'Mini barres' },
 ];
 const VU_METER_DISPLAY_OPTIONS: Array<{ value: VuMeterDisplay; label: string }> = [
   { value: 'clock', label: 'Heure' },
@@ -141,6 +143,42 @@ function sampleWaveform(values: Uint8Array, points = 48) {
   });
 }
 
+function computeRmsLevel(values: Uint8Array) {
+  if (values.length === 0) {
+    return 0;
+  }
+
+  let sum = 0;
+  for (const value of values) {
+    const centered = (value - 128) / 128;
+    sum += centered * centered;
+  }
+
+  return clamp01(Math.sqrt(sum / values.length) * Math.SQRT2);
+}
+
+function averageFrequencyData(left: Uint8Array, right: Uint8Array) {
+  const length = Math.min(left.length, right.length);
+  return Uint8Array.from({ length }, (_, index) =>
+    Math.round(((left[index] ?? 0) + (right[index] ?? 0)) / 2),
+  );
+}
+
+function averageWaveformData(left: Uint8Array, right: Uint8Array) {
+  const length = Math.min(left.length, right.length);
+  return Uint8Array.from({ length }, (_, index) =>
+    Math.round(((left[index] ?? 128) + (right[index] ?? 128)) / 2),
+  );
+}
+
+function smoothVuLevels(nextLevels: number[], previousLevels: number[]) {
+  return nextLevels.map((level, index) => {
+    const previousLevel = previousLevels[index] ?? 0;
+    const smoothingFactor = level >= previousLevel ? 0.38 : 0.16;
+    return clamp01(previousLevel + (level - previousLevel) * smoothingFactor);
+  });
+}
+
 function buildVuMeterColumns(values: Uint8Array, columns = 16) {
   if (values.length === 0 || columns <= 0) {
     return [];
@@ -183,7 +221,7 @@ function VuMeter({
 
   const isFloating = mode === 'floating';
   const isIdle = levels.length === 0;
-  const leftLevel = levels[0] ?? 0.08;
+  const leftLevel = levels[0] ?? 0;
   const rightLevel = levels[1] ?? leftLevel;
   const barLevels = levels.length > 0 ? levels : Array.from({ length: 20 }, (_, index) =>
     index % 4 === 0 ? 0.14 : 0.08,
@@ -202,47 +240,192 @@ function VuMeter({
       aria-hidden="true"
     >
       {style === 'needle-duo' ? (
-        <div className="vu-meter-needles">
+        <div className="vu-meter-needle-duo">
           {[leftLevel, rightLevel].map((level, index) => (
-            <div key={index} className="vu-meter-needle-dial">
-              <div className="vu-meter-needle-arc" />
-              <div
-                className="vu-meter-needle"
-                style={{ transform: `rotate(${level * 96 - 48}deg)` }}
-              />
-              <div className="vu-meter-needle-pivot" />
+            <div key={index} className="vu-meter-needle-panel">
+              <div className="vu-meter-needle-scale" aria-hidden="true">
+                {['-20', '10', '7', '5', '3', '0', '+3'].map((label, markIndex) => (
+                  <span
+                    key={label}
+                    className={`vu-meter-scale-mark${markIndex >= 5 ? ' vu-meter-scale-mark--hot' : ''}`}
+                    style={{ '--mark-index': `${markIndex}` } as CSSProperties}
+                  >
+                    <span className="vu-meter-scale-tick" />
+                    <span className="vu-meter-scale-label">{label}</span>
+                  </span>
+                ))}
+              </div>
+              <div className="vu-meter-needle-dial">
+                <div
+                  className="vu-meter-needle"
+                  style={{ transform: `rotate(${level * 82 - 41}deg)` }}
+                />
+                <div className="vu-meter-needle-pivot" />
+              </div>
+              <div className="vu-meter-needle-brand">
+                <span>{index === 0 ? 'L' : 'R'}</span>
+                <span className="vu-meter-needle-brand-led" />
+              </div>
             </div>
           ))}
         </div>
       ) : null}
 
       {style === 'led-mono' ? (
-        <div className="vu-meter-led-stack">
-          {Array.from({ length: 18 }, (_, index) => {
-            const threshold = (index + 1) / 18;
-            return (
-              <span
-                key={index}
-                className={`vu-meter-led${leftLevel >= threshold ? ' is-active' : ''}`}
-              />
-            );
-          })}
+        <div className="vu-meter-led-rack">
+          <div className="vu-meter-led-rack__scale" aria-hidden="true">
+            {['0', '-3', '-6', '-10', '-20'].map((label) => (
+              <span key={label}>{label}</span>
+            ))}
+          </div>
+          <div className="vu-meter-led-stack">
+            {Array.from({ length: 20 }, (_, index) => {
+              const positionFromBottom = 19 - index;
+              const threshold = (positionFromBottom + 1) / 20;
+              const toneClass =
+                positionFromBottom >= 17
+                  ? ' vu-meter-led--danger'
+                  : positionFromBottom >= 13
+                    ? ' vu-meter-led--warm'
+                    : '';
+              return (
+                <span
+                  key={index}
+                  className={`vu-meter-led${toneClass}${leftLevel >= threshold ? ' is-active' : ''}`}
+                />
+              );
+            })}
+          </div>
+          <div className="vu-meter-led-rack__scale vu-meter-led-rack__scale--right" aria-hidden="true">
+            {['0', '-3', '-6', '-10', '-20'].map((label) => (
+              <span key={label}>{label}</span>
+            ))}
+          </div>
         </div>
       ) : null}
 
       {style === 'led-stereo' ? (
-        <div className="vu-meter-columns">
-          {barLevels.map((level, index) => (
-            <div key={index} className="vu-meter-column">
-              {Array.from({ length: 14 }, (_, ledIndex) => {
-                const threshold = (ledIndex + 1) / 14;
-                return (
-                  <span
-                    key={ledIndex}
-                    className={`vu-meter-led vu-meter-led--column${level >= threshold ? ' is-active' : ''}`}
-                  />
-                );
-              })}
+        <div className="vu-meter-led-rack vu-meter-led-rack--stereo">
+          <div className="vu-meter-led-rack__scale" aria-hidden="true">
+            {['0', '-3', '-6', '-10', '-20'].map((label) => (
+              <span key={label}>{label}</span>
+            ))}
+          </div>
+          <div className="vu-meter-led-rack__stereo-columns">
+            {[leftLevel, rightLevel].map((channelLevel, channelIndex) => (
+              <div key={channelIndex} className="vu-meter-led-stack vu-meter-led-stack--stereo">
+                {Array.from({ length: 20 }, (_, index) => {
+                  const positionFromBottom = 19 - index;
+                  const threshold = (positionFromBottom + 1) / 20;
+                  const toneClass =
+                    positionFromBottom >= 17
+                      ? ' vu-meter-led--danger'
+                      : positionFromBottom >= 13
+                        ? ' vu-meter-led--warm'
+                        : '';
+                  return (
+                    <span
+                      key={index}
+                      className={`vu-meter-led vu-meter-led--column${toneClass}${channelLevel >= threshold ? ' is-active' : ''}`}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+          <div className="vu-meter-led-rack__scale vu-meter-led-rack__scale--right" aria-hidden="true">
+            {['0', '-3', '-6', '-10', '-20'].map((label) => (
+              <span key={label}>{label}</span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {style === 'led-horizontal-mono' ? (
+        <div className="vu-meter-h-led-rack vu-meter-h-led-rack--broadcast vu-meter-h-led-rack--mono-comb">
+          <div className="vu-meter-h-led-row">
+            <span className="vu-meter-h-led-row__label">M</span>
+            <div className="vu-meter-h-led-row__segments">
+              <div className="vu-meter-h-led-row__guides vu-meter-h-led-row__guides--mono-comb">
+                {Array.from({ length: 10 }, (_, index) => {
+                  const threshold = (index + 1) / 12;
+                  return (
+                    <span
+                      key={`top-${index}`}
+                      className={`vu-meter-h-led-guide vu-meter-h-led-guide--mono-comb${leftLevel >= threshold ? ' is-active' : ''}`}
+                    />
+                  );
+                })}
+              </div>
+              <div className="vu-meter-h-led-row__segments-main">
+                {Array.from({ length: 10 }, (_, index) => {
+                  const threshold = (index + 1) / 12;
+                  const toneClass = index >= 7 ? ' vu-meter-led--warm' : '';
+                  return (
+                    <span
+                      key={index}
+                      className={`vu-meter-h-led${toneClass}${leftLevel >= threshold ? ' is-active' : ''}`}
+                    />
+                  );
+                })}
+              </div>
+              <div className="vu-meter-h-led-row__guides vu-meter-h-led-row__guides--mono-comb">
+                {Array.from({ length: 10 }, (_, index) => {
+                  const threshold = (index + 1) / 12;
+                  return (
+                    <span
+                      key={`bottom-${index}`}
+                      className={`vu-meter-h-led-guide vu-meter-h-led-guide--mono-comb${leftLevel >= threshold ? ' is-active' : ''}`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {style === 'led-horizontal-stereo' ? (
+        <div className="vu-meter-h-led-rack vu-meter-h-led-rack--stereo vu-meter-h-led-rack--stereo-comb">
+          {[leftLevel, rightLevel].map((channelLevel, index) => (
+            <div key={index} className="vu-meter-h-led-row">
+              <span className="vu-meter-h-led-row__label">{index === 0 ? 'L' : 'R'}</span>
+              <div className="vu-meter-h-led-row__segments">
+                <div className="vu-meter-h-led-row__guides vu-meter-h-led-row__guides--mono-comb">
+                  {Array.from({ length: 10 }, (_, guideIndex) => {
+                    const threshold = (guideIndex + 1) / 12;
+                    return (
+                      <span
+                        key={`top-${index}-${guideIndex}`}
+                        className={`vu-meter-h-led-guide vu-meter-h-led-guide--mono-comb${channelLevel >= threshold ? ' is-active' : ''}`}
+                      />
+                    );
+                  })}
+                </div>
+                <div className="vu-meter-h-led-row__segments-main">
+                  {Array.from({ length: 10 }, (_, segmentIndex) => {
+                    const threshold = (segmentIndex + 1) / 12;
+                    const toneClass = segmentIndex >= 7 ? ' vu-meter-led--warm' : '';
+                    return (
+                      <span
+                        key={segmentIndex}
+                        className={`vu-meter-h-led${toneClass}${channelLevel >= threshold ? ' is-active' : ''}`}
+                      />
+                    );
+                  })}
+                </div>
+                <div className="vu-meter-h-led-row__guides vu-meter-h-led-row__guides--mono-comb">
+                  {Array.from({ length: 10 }, (_, guideIndex) => {
+                    const threshold = (guideIndex + 1) / 12;
+                    return (
+                      <span
+                        key={`bottom-${index}-${guideIndex}`}
+                        className={`vu-meter-h-led-guide vu-meter-h-led-guide--mono-comb${channelLevel >= threshold ? ' is-active' : ''}`}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           ))}
         </div>
@@ -265,7 +448,7 @@ function VuMeter({
 
       {style === 'wave-scope' ? (
         <svg className="vu-meter-wave" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <path d={waveformPath || 'M 0 56 L 10 52 L 20 55 L 30 50 L 40 54 L 50 49 L 60 53 L 70 51 L 80 55 L 90 52 L 100 56'} />
+          <path d={waveformPath || 'M 0 50 L 100 50'} />
         </svg>
       ) : null}
 
@@ -1423,10 +1606,13 @@ function App() {
   const liveRadioAudioRef = useRef<HTMLAudioElement | null>(null);
   const liveDirectoryInputRef = useRef<HTMLInputElement | null>(null);
   const vuMeterAudioContextRef = useRef<AudioContext | null>(null);
-  const vuMeterAnalyserRef = useRef<AnalyserNode | null>(null);
+  const vuMeterLeftAnalyserRef = useRef<AnalyserNode | null>(null);
+  const vuMeterRightAnalyserRef = useRef<AnalyserNode | null>(null);
+  const vuMeterChannelSplitterRef = useRef<ChannelSplitterNode | null>(null);
   const vuMeterSourceRef = useRef<AudioNode | null>(null);
   const vuMeterConnectedAudioRef = useRef<HTMLAudioElement | null>(null);
   const vuMeterFrameRef = useRef<number | null>(null);
+  const vuMeterSmoothedLevelsRef = useRef<number[]>([]);
   const liveDirectoryObjectUrlsRef = useRef<string[]>([]);
   const liveDirectoryTrackIndexRef = useRef(0);
   const liveDirectoryPlaybackModeRef = useRef<LiveDirectoryPlaybackMode>('normal');
@@ -2286,6 +2472,7 @@ function App() {
         window.cancelAnimationFrame(vuMeterFrameRef.current);
         vuMeterFrameRef.current = null;
       }
+      vuMeterSmoothedLevelsRef.current = [];
       setVuMeterLevels([]);
       setVuMeterWaveform([]);
       return;
@@ -2310,9 +2497,9 @@ function App() {
 
       if (vuMeterConnectedAudioRef.current !== activeAudio) {
         vuMeterSourceRef.current?.disconnect();
-        const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
-        analyser.smoothingTimeConstant = 0.82;
+        vuMeterChannelSplitterRef.current?.disconnect();
+        vuMeterLeftAnalyserRef.current?.disconnect();
+        vuMeterRightAnalyserRef.current?.disconnect();
         type CaptureCapableAudio = HTMLAudioElement & {
           captureStream?: () => MediaStream;
           mozCaptureStream?: () => MediaStream;
@@ -2332,35 +2519,64 @@ function App() {
           ? audioContext.createMediaStreamSource(capturedStream)
           : audioContext.createMediaElementSource(activeAudio);
 
-        source.connect(analyser);
+        const splitter = audioContext.createChannelSplitter(2);
+        const leftAnalyser = audioContext.createAnalyser();
+        const rightAnalyser = audioContext.createAnalyser();
+        leftAnalyser.fftSize = 256;
+        rightAnalyser.fftSize = 256;
+        leftAnalyser.smoothingTimeConstant = 0.82;
+        rightAnalyser.smoothingTimeConstant = 0.82;
+
+        source.connect(splitter);
+        splitter.connect(leftAnalyser, 0);
+        splitter.connect(rightAnalyser, 1);
         if (!capturedStream) {
-          analyser.connect(audioContext.destination);
+          source.connect(audioContext.destination);
         }
         vuMeterSourceRef.current = source;
-        vuMeterAnalyserRef.current = analyser;
+        vuMeterChannelSplitterRef.current = splitter;
+        vuMeterLeftAnalyserRef.current = leftAnalyser;
+        vuMeterRightAnalyserRef.current = rightAnalyser;
         vuMeterConnectedAudioRef.current = activeAudio;
+        vuMeterSmoothedLevelsRef.current = [];
       }
 
-      const analyser = vuMeterAnalyserRef.current;
-      if (!analyser) {
+      const leftAnalyser = vuMeterLeftAnalyserRef.current;
+      const rightAnalyser = vuMeterRightAnalyserRef.current;
+      if (!leftAnalyser || !rightAnalyser) {
         return;
       }
 
-      const frequencyData = new Uint8Array(analyser.frequencyBinCount);
-      const waveformData = new Uint8Array(analyser.fftSize);
+      const leftFrequencyData = new Uint8Array(leftAnalyser.frequencyBinCount);
+      const rightFrequencyData = new Uint8Array(rightAnalyser.frequencyBinCount);
+      const leftWaveformData = new Uint8Array(leftAnalyser.fftSize);
+      const rightWaveformData = new Uint8Array(rightAnalyser.fftSize);
 
       const updateMeter = () => {
-        analyser.getByteFrequencyData(frequencyData);
-        analyser.getByteTimeDomainData(waveformData);
+        leftAnalyser.getByteFrequencyData(leftFrequencyData);
+        rightAnalyser.getByteFrequencyData(rightFrequencyData);
+        leftAnalyser.getByteTimeDomainData(leftWaveformData);
+        rightAnalyser.getByteTimeDomainData(rightWaveformData);
 
-        const frequencyLevels = buildVuMeterColumns(frequencyData, 20);
-        const stereoLevels = [
-          Math.max(...frequencyLevels.slice(0, Math.max(1, Math.floor(frequencyLevels.length / 2))), 0),
-          Math.max(...frequencyLevels.slice(Math.max(1, Math.floor(frequencyLevels.length / 2))), 0),
-        ];
+        const monoFrequencyData = averageFrequencyData(leftFrequencyData, rightFrequencyData);
+        const monoWaveformData = averageWaveformData(leftWaveformData, rightWaveformData);
+        const leftLevel = computeRmsLevel(leftWaveformData);
+        const rightLevel = computeRmsLevel(rightWaveformData);
+        const monoLevel = clamp01(Math.sqrt(((leftLevel ** 2) + (rightLevel ** 2)) / 2));
 
-        setVuMeterLevels(frequencyLevels.length > 0 ? frequencyLevels : stereoLevels);
-        setVuMeterWaveform(sampleWaveform(waveformData, 52));
+        const nextLevels =
+          vuMeterStyle === 'needle-duo'
+          || vuMeterStyle === 'led-stereo'
+          || vuMeterStyle === 'led-horizontal-stereo'
+            ? [leftLevel, rightLevel]
+            : vuMeterStyle === 'led-mono' || vuMeterStyle === 'led-horizontal-mono'
+              ? [monoLevel]
+              : buildVuMeterColumns(monoFrequencyData, 20);
+        const smoothedLevels = smoothVuLevels(nextLevels, vuMeterSmoothedLevelsRef.current);
+
+        vuMeterSmoothedLevelsRef.current = smoothedLevels;
+        setVuMeterLevels(smoothedLevels);
+        setVuMeterWaveform(sampleWaveform(monoWaveformData, 52));
         vuMeterFrameRef.current = window.requestAnimationFrame(updateMeter);
       };
 
@@ -2373,10 +2589,11 @@ function App() {
         }
       };
     } catch {
+      vuMeterSmoothedLevelsRef.current = [];
       setVuMeterLevels([]);
       setVuMeterWaveform([]);
     }
-  }, [liveRadioPlaybackState, vuMeterEnabled]);
+  }, [liveRadioPlaybackState, vuMeterEnabled, vuMeterStyle]);
 
   useEffect(() => {
     void Promise.all([
@@ -2569,7 +2786,7 @@ function App() {
             alarmPlaybackState === 'ringing'
               ? 'display-stage-card--alarm'
               : ''
-          }`}
+          } ${vuMeterEnabled && vuMeterDisplay === 'vu-meter' ? 'display-stage-card--vu-only' : ''}`}
           data-display-id={activeDisplayId}
           onPointerUp={handleDisplayStagePointerUp}
         >
@@ -2870,6 +3087,16 @@ function App() {
 	                      <span>Afficher la date</span>
 	                    </label>
 
+	                    <label className="field-label field-label--checkbox-row" htmlFor="time-format-checkbox">
+	                      <input
+                        id="time-format-checkbox"
+                        type="checkbox"
+                        checked={use24HourFormat}
+                        onChange={(event) => setUse24HourFormat(event.target.checked)}
+                      />
+                      <span>Affichage 12/24</span>
+                    </label>
+
 	                    <label className="field-label field-label--checkbox-row" htmlFor="vu-meter-checkbox">
 	                      <input
 	                        id="vu-meter-checkbox"
@@ -2914,8 +3141,8 @@ function App() {
 	                              setVuMeterMode(event.target.value as VuMeterMode)
 	                            }
 	                          >
-	                            <option value="floating">Flottant</option>
-	                            <option value="integrated">Integre</option>
+	                            <option value="floating">Fenetre</option>
+	                            <option value="integrated">Plein ecran</option>
 	                          </select>
 	                        </label>
 
@@ -2941,15 +3168,6 @@ function App() {
 	                      </>
 	                    ) : null}
 
-	                    <label className="field-label field-label--checkbox-row" htmlFor="time-format-checkbox">
-	                      <input
-                        id="time-format-checkbox"
-                        type="checkbox"
-                        checked={use24HourFormat}
-                        onChange={(event) => setUse24HourFormat(event.target.checked)}
-                      />
-                      <span>Affichage 12/24</span>
-                    </label>
                   </section>
                 ) : null}
 

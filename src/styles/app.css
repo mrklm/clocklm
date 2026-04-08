@@ -95,6 +95,140 @@
   position: relative;
 }
 
+.display-stage-card--vu-only {
+  place-items: stretch;
+}
+
+.display-stage-card--vu-only .vu-meter--integrated {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: 1.35rem;
+  border-radius: 0;
+  transform: none;
+  display: grid;
+  align-content: center;
+}
+
+.display-stage-card--vu-only .vu-meter--needle-duo.vu-meter--integrated,
+.display-stage-card--vu-only .vu-meter--led-mono.vu-meter--integrated,
+.display-stage-card--vu-only .vu-meter--led-stereo.vu-meter--integrated {
+  width: 100%;
+}
+
+.display-stage-card--vu-only .vu-meter--led-mono.vu-meter--integrated,
+.display-stage-card--vu-only .vu-meter--led-stereo.vu-meter--integrated {
+  align-content: center;
+}
+
+.display-stage-card--vu-only .vu-meter--led-horizontal-mono.vu-meter--integrated,
+.display-stage-card--vu-only .vu-meter--led-horizontal-stereo.vu-meter--integrated {
+  top: 50%;
+  right: auto;
+  bottom: auto;
+  left: 50%;
+  height: auto;
+  padding: 1rem 1.1rem 1.1rem;
+  border-radius: 18px;
+  transform: translate(-50%, -50%);
+  align-content: center;
+  justify-items: center;
+}
+
+.display-stage-card--vu-only .vu-meter--led-horizontal-mono.vu-meter--integrated .vu-meter-h-led-rack,
+.display-stage-card--vu-only .vu-meter--led-horizontal-stereo.vu-meter--integrated .vu-meter-h-led-rack {
+  transform: none;
+}
+
+.display-stage-card--vu-only .vu-meter--needle-duo.vu-meter--integrated {
+  align-content: stretch;
+}
+
+.display-stage-card--vu-only .vu-meter--needle-duo.vu-meter--integrated .vu-meter-needle-duo {
+  height: 80%;
+  align-items: stretch;
+  align-self: center;
+}
+
+.display-stage-card--vu-only .vu-meter--needle-duo.vu-meter--integrated .vu-meter-needle-panel {
+  height: 100%;
+  grid-template-rows: auto 1fr auto;
+  align-content: space-between;
+}
+
+.display-stage-card--vu-only .vu-meter--needle-duo.vu-meter--integrated .vu-meter-needle-dial {
+  min-height: 0;
+  height: auto;
+}
+
+.display-stage-card--vu-only .vu-meter--needle-duo.vu-meter--integrated .vu-meter-needle {
+  height: 88%;
+  z-index: 1;
+}
+
+.display-stage-card--vu-only .vu-meter--needle-duo.vu-meter--integrated .vu-meter-needle-scale {
+  min-height: 2.4rem;
+}
+
+.display-stage-card--vu-only .vu-meter--needle-duo.vu-meter--integrated .vu-meter-scale-mark {
+  width: 2.4rem;
+}
+
+.display-stage-card--vu-only .vu-meter--needle-duo.vu-meter--integrated .vu-meter-scale-tick {
+  height: 1rem;
+  margin-bottom: 0.18rem;
+}
+
+.display-stage-card--vu-only .vu-meter--needle-duo.vu-meter--integrated .vu-meter-scale-label {
+  font-size: 0.8rem;
+}
+
+.display-stage-card--vu-only .vu-meter--needle-duo.vu-meter--integrated .vu-meter-needle-brand {
+  font-size: 1rem;
+}
+
+.display-stage-card--vu-only .vu-meter--wave-scope.vu-meter--integrated .vu-meter-wave {
+  min-height: 0;
+  height: 100%;
+}
+
+.display-stage-card--vu-only .vu-meter--wave-scope.vu-meter--integrated {
+  align-content: stretch;
+}
+
+.display-stage-card--vu-only .vu-meter--wave-scope.vu-meter--integrated .vu-meter-wave path {
+  vector-effect: non-scaling-stroke;
+}
+
+.display-stage-card--vu-only .vu-meter--led-horizontal-mono.vu-meter--integrated .vu-meter-h-led-rack__scale,
+.display-stage-card--vu-only .vu-meter--led-horizontal-stereo.vu-meter--integrated .vu-meter-h-led-rack__scale {
+  font-size: 0.9rem;
+}
+
+.display-stage-card--vu-only .vu-meter--led-horizontal-mono.vu-meter--integrated .vu-meter-h-led-row,
+.display-stage-card--vu-only .vu-meter--led-horizontal-stereo.vu-meter--integrated .vu-meter-h-led-row {
+  grid-template-columns: 2.4rem minmax(0, 1fr);
+  gap: 0.6rem;
+}
+
+.display-stage-card--vu-only .vu-meter--led-horizontal-mono.vu-meter--integrated .vu-meter-h-led-row__label,
+.display-stage-card--vu-only .vu-meter--led-horizontal-stereo.vu-meter--integrated .vu-meter-h-led-row__label {
+  font-size: 1.15rem;
+}
+
+.display-stage-card--vu-only .vu-meter--led-horizontal-mono.vu-meter--integrated .vu-meter-h-led-row__segments,
+.display-stage-card--vu-only .vu-meter--led-horizontal-stereo.vu-meter--integrated .vu-meter-h-led-row__segments {
+  gap: 0.3rem;
+}
+
+.display-stage-card--vu-only .vu-meter--led-horizontal-mono.vu-meter--integrated .vu-meter-h-led,
+.display-stage-card--vu-only .vu-meter--led-horizontal-stereo.vu-meter--integrated .vu-meter-h-led {
+  min-height: 1.25rem;
+}
+
 .display-stage-card--alarm::after {
   content: '';
   position: absolute;
@@ -748,13 +882,22 @@
   --vu-meter-panel: color-mix(in srgb, var(--theme-panel) 82%, rgba(0, 0, 0, 0.28));
   --vu-meter-border: color-mix(in srgb, var(--theme-fg) 12%, transparent);
   --vu-meter-glow: color-mix(in srgb, var(--theme-accent) 34%, transparent);
+  --vu-meter-wave-stroke: color-mix(in srgb, var(--theme-accent) 62%, var(--theme-field-fg));
+  --vu-meter-wave-glow: color-mix(in srgb, var(--theme-accent) 42%, transparent);
+  --vu-meter-analog-face-top: color-mix(in srgb, var(--theme-field) 72%, white);
+  --vu-meter-analog-face-bottom: color-mix(in srgb, var(--theme-panel) 68%, var(--theme-field));
+  --vu-meter-analog-ink: color-mix(in srgb, var(--theme-field-fg) 82%, #1c140c);
+  --vu-meter-analog-border: color-mix(in srgb, var(--theme-accent) 24%, rgba(58, 38, 15, 0.45));
+  --vu-meter-analog-hot: color-mix(in srgb, #d92d20 72%, var(--theme-accent));
+  --vu-meter-analog-shadow: color-mix(in srgb, var(--theme-accent) 20%, rgba(124, 88, 31, 0.14));
+  --vu-meter-analog-pivot: color-mix(in srgb, var(--theme-accent) 22%, #3c2b17);
   position: absolute;
   z-index: 18;
   display: grid;
-  gap: 0.5rem;
-  padding: 0.7rem 0.78rem;
+  gap: 0.38rem;
+  padding: 0.5rem 0.58rem;
   border: 1px solid var(--vu-meter-border);
-  border-radius: 18px;
+  border-radius: 15px;
   background: var(--vu-meter-panel);
   backdrop-filter: blur(16px);
   box-shadow:
@@ -768,16 +911,74 @@
 }
 
 .vu-meter--floating {
-  right: 1rem;
-  bottom: 1rem;
-  width: min(22rem, calc(100vw - 2rem));
+  left: 50%;
+  bottom: 0.9rem;
+  width: min(16rem, calc(100vw - 2.4rem));
+  transform: translateX(-50%);
 }
 
 .vu-meter--integrated {
   left: 50%;
-  bottom: 1rem;
-  width: min(34rem, calc(100vw - 2rem));
+  bottom: 0.9rem;
+  width: min(20rem, calc(100vw - 2.4rem));
   transform: translateX(-50%);
+}
+
+.vu-meter--needle-duo.vu-meter--floating {
+  width: min(32rem, calc(100vw - 2.4rem));
+}
+
+.vu-meter--led-mono.vu-meter--floating,
+.vu-meter--led-stereo.vu-meter--floating {
+  gap: 0.08rem;
+  padding: 0.08rem;
+  border-width: 0;
+  border-radius: 0.18rem;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+  transform: translateX(-50%) scale(1.33);
+  transform-origin: bottom center;
+}
+
+.vu-meter--wave-scope.vu-meter--floating {
+  width: min(16rem, calc(100vw - 2.4rem));
+  height: 6.4rem;
+  min-height: 6.4rem;
+  padding: 0.08rem 0.18rem;
+  gap: 0;
+  background: color-mix(in srgb, var(--theme-panel) 28%, transparent);
+  border-color: color-mix(in srgb, var(--theme-fg) 8%, transparent);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
+}
+
+.vu-meter--needle-duo.vu-meter--integrated {
+  width: min(40rem, calc(100vw - 2.4rem));
+}
+
+.vu-meter--led-horizontal-mono.vu-meter--floating {
+  width: min(30rem, calc(100vw - 2.4rem));
+}
+
+.vu-meter--led-horizontal-stereo.vu-meter--floating {
+  width: min(34rem, calc(100vw - 2.4rem));
+}
+
+.vu-meter--led-horizontal-mono.vu-meter--integrated {
+  width: min(36rem, calc(100vw - 2.4rem));
+}
+
+.vu-meter--led-horizontal-stereo.vu-meter--integrated {
+  width: min(40rem, calc(100vw - 2.4rem));
+}
+
+.display-stage-card--vu-only .vu-meter--led-horizontal-mono.vu-meter--integrated {
+  width: min(76rem, calc(100vw - 3rem));
+}
+
+.display-stage-card--vu-only .vu-meter--led-horizontal-stereo.vu-meter--integrated {
+  width: min(84rem, calc(100vw - 3rem));
 }
 
 .vu-meter-needles {
@@ -786,60 +987,779 @@
   gap: 0.75rem;
 }
 
-.vu-meter-needle-dial {
-  position: relative;
-  min-height: 5.5rem;
+.vu-meter-needle-duo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
 }
 
-.vu-meter-needle-arc {
+.vu-meter-needle-panel {
+  position: relative;
+  display: grid;
+  gap: 0.38rem;
+  min-width: 0;
+  padding: 0.38rem 0.45rem 0.42rem;
+  border: 2px solid var(--vu-meter-analog-border);
+  border-radius: 0.9rem;
+  background:
+    linear-gradient(180deg, var(--vu-meter-analog-face-top), var(--vu-meter-analog-face-bottom));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -10px 18px var(--vu-meter-analog-shadow),
+    0 14px 28px rgba(0, 0, 0, 0.22);
+}
+
+.vu-meter-needle-scale {
+  position: relative;
+  display: block;
+  min-height: 1.55rem;
+}
+
+.vu-meter-scale-mark {
+  --mark-ratio: calc(var(--mark-index) / 6);
   position: absolute;
-  inset: 0;
-  border-top-left-radius: 999px;
-  border-top-right-radius: 999px;
-  border: 2px solid color-mix(in srgb, var(--theme-fg) 22%, transparent);
-  border-bottom: none;
+  left: calc(0.22rem + (100% - 0.44rem) * var(--mark-ratio));
+  top: 0;
+  width: 1.65rem;
+  transform: translateX(-50%);
+  color: var(--vu-meter-analog-ink);
+  text-align: center;
+}
+
+.vu-meter-scale-mark--hot {
+  color: var(--vu-meter-analog-hot);
+}
+
+.vu-meter-scale-tick {
+  display: block;
+  width: 2px;
+  height: 0.68rem;
+  margin: 0 auto 0.12rem;
+  background: currentColor;
+}
+
+.vu-meter-scale-label {
+  display: block;
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.vu-meter-needle-dial {
+  position: relative;
+  min-height: 3.55rem;
 }
 
 .vu-meter-needle {
   position: absolute;
   left: 50%;
-  bottom: 0.55rem;
+  bottom: 0.38rem;
   width: 2px;
-  height: 3.5rem;
+  height: 3.35rem;
   transform-origin: bottom center;
-  background: linear-gradient(180deg, var(--theme-accent), var(--theme-field-fg));
-  box-shadow: 0 0 10px var(--vu-meter-glow);
+  background: linear-gradient(180deg, var(--vu-meter-analog-ink) 0%, color-mix(in srgb, var(--vu-meter-analog-ink) 56%, black) 100%);
+  box-shadow: 0 0 1px rgba(255, 255, 255, 0.3);
 }
 
 .vu-meter-needle-pivot {
   position: absolute;
   left: 50%;
-  bottom: 0.25rem;
-  width: 0.7rem;
-  height: 0.7rem;
+  bottom: 0.12rem;
+  width: 0.68rem;
+  height: 0.68rem;
   border-radius: 50%;
   transform: translateX(-50%);
-  background: var(--theme-field-fg);
+  border: 2px solid color-mix(in srgb, var(--vu-meter-analog-ink) 78%, black);
+  background: radial-gradient(circle at 35% 35%, color-mix(in srgb, white 72%, var(--vu-meter-analog-face-top)), var(--vu-meter-analog-pivot) 72%);
+}
+
+.vu-meter-needle-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  color: var(--vu-meter-analog-ink);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.vu-meter-needle-brand-led {
+  width: 0.52rem;
+  height: 0.52rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, color-mix(in srgb, white 38%, var(--vu-meter-analog-hot)), var(--vu-meter-analog-hot) 68%);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--vu-meter-analog-hot) 38%, transparent);
+}
+
+.vu-meter-led-rack {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.28rem;
+  align-items: stretch;
+  width: min(5.2rem, 100%);
+  margin-inline: auto;
+  padding: 0.42rem 0.35rem;
+  border: 1px solid rgba(194, 207, 255, 0.12);
+  border-radius: 0.95rem;
+  background:
+    linear-gradient(180deg, rgba(7, 11, 20, 0.95), rgba(20, 26, 38, 0.98));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -8px 16px rgba(0, 0, 0, 0.35);
+}
+
+.vu-meter-led-rack__scale {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0.95rem;
+  color: rgba(197, 209, 234, 0.7);
+  font-size: 0.48rem;
+  font-weight: 700;
+  line-height: 1;
+  text-align: right;
+}
+
+.vu-meter-led-rack__scale--right {
+  text-align: left;
+}
+
+.vu-meter-led-rack--stereo {
+  width: min(7.2rem, 100%);
+}
+
+.vu-meter--led-mono.vu-meter--floating .vu-meter-led-rack,
+.vu-meter--led-stereo.vu-meter--floating .vu-meter-led-rack {
+  padding: 0.02rem;
+  border-width: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.vu-meter--led-mono.vu-meter--floating .vu-meter-led-rack__scale,
+.vu-meter--led-stereo.vu-meter--floating .vu-meter-led-rack__scale {
+  min-width: 0.58rem;
+  font-size: 0.34rem;
+}
+
+.vu-meter--led-mono.vu-meter--floating .vu-meter-led-rack__stereo-columns,
+.vu-meter--led-stereo.vu-meter--floating .vu-meter-led-rack__stereo-columns {
+  gap: 0.12rem;
+}
+
+.vu-meter-led-rack__stereo-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.22rem;
 }
 
 .vu-meter-led-stack {
   display: grid;
-  gap: 0.22rem;
+  gap: 0.12rem;
+}
+
+.vu-meter-led-stack--stereo {
+  min-width: 0;
 }
 
 .vu-meter-led,
 .vu-meter-led--column {
   display: block;
   width: 100%;
-  min-height: 0.26rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--theme-field-fg) 16%, transparent);
+  min-height: 0.28rem;
+  border-radius: 0.18rem;
+  background: rgba(74, 86, 110, 0.24);
+  box-shadow: inset 0 0 0 1px rgba(172, 191, 229, 0.05);
 }
 
 .vu-meter-led.is-active,
 .vu-meter-led--column.is-active {
-  background: linear-gradient(90deg, #34d399, #facc15, #fb7185);
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+  background: linear-gradient(90deg, #3cff8d, #d9ff58);
+  box-shadow:
+    0 0 7px rgba(115, 255, 154, 0.34),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+.vu-meter-led--warm.is-active {
+  background: linear-gradient(90deg, #e9ff58, #ffd24a);
+  box-shadow:
+    0 0 7px rgba(255, 216, 103, 0.34),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.vu-meter-led--danger.is-active {
+  background: linear-gradient(90deg, #ffb357, #ff5757);
+  box-shadow:
+    0 0 8px rgba(255, 113, 113, 0.38),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.vu-meter-h-led-rack {
+  display: grid;
+  gap: 0.42rem;
+  width: 100%;
+  margin-inline: auto;
+  padding: 0.65rem 0.8rem 0.7rem;
+  border: 1px solid rgba(255, 214, 130, 0.14);
+  border-radius: 0.95rem;
+  background:
+    linear-gradient(180deg, rgba(8, 10, 16, 0.99), rgba(12, 15, 24, 0.99));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    inset 0 -12px 22px rgba(0, 0, 0, 0.44);
+}
+
+.vu-meter-h-led-rack--studio {
+  gap: 0.55rem;
+  padding: 0.8rem 1rem 0.9rem;
+  border-color: rgba(255, 214, 130, 0.2);
+  background:
+    linear-gradient(180deg, rgba(5, 8, 14, 0.995), rgba(10, 13, 20, 0.995));
+}
+
+.vu-meter-h-led-rack--broadcast {
+  gap: 0.5rem;
+  padding: 0.85rem 1rem 0.95rem;
+  border-color: rgba(255, 206, 112, 0.24);
+  background:
+    linear-gradient(180deg, rgba(4, 7, 12, 0.998), rgba(8, 11, 18, 0.998));
+}
+
+.vu-meter-h-led-rack--mono-continuous {
+  gap: 0.72rem;
+  padding: 1rem 1.15rem 1.08rem;
+  border-color: rgba(199, 255, 105, 0.26);
+  background:
+    linear-gradient(180deg, rgba(4, 6, 10, 0.998), rgba(11, 16, 12, 0.998));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -18px 26px rgba(0, 0, 0, 0.48),
+    0 10px 28px rgba(0, 0, 0, 0.18);
+}
+
+.vu-meter-h-led-rack--mono-comb {
+  gap: 0.32rem;
+  padding: 0.44rem 0.5rem 0.5rem;
+  border: 1px solid #868686;
+  border-top-color: #f4f4f4;
+  border-left-color: #f4f4f4;
+  border-right-color: #4a4a4a;
+  border-bottom-color: #4a4a4a;
+  border-radius: 0;
+  background: linear-gradient(180deg, #c7c7c7, #a9a9a9);
+  box-shadow:
+    inset 1px 1px 0 #ffffff,
+    inset -1px -1px 0 #6b6b6b;
+}
+
+.vu-meter-h-led-rack--stereo-comb {
+  gap: 0.32rem;
+  padding: 0.44rem 0.5rem 0.5rem;
+  border: 1px solid #868686;
+  border-top-color: #f4f4f4;
+  border-left-color: #f4f4f4;
+  border-right-color: #4a4a4a;
+  border-bottom-color: #4a4a4a;
+  border-radius: 0;
+  background: linear-gradient(180deg, #c7c7c7, #a9a9a9);
+  box-shadow:
+    inset 1px 1px 0 #ffffff,
+    inset -1px -1px 0 #6b6b6b;
+}
+
+.vu-meter-h-led-rack__scale {
+  display: grid;
+  grid-template-columns: 1.2rem minmax(0, 1fr) auto;
+  align-items: center;
+  color: rgba(255, 233, 173, 0.88);
+  font-size: 0.52rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.vu-meter-h-led-rack__scale-spacer {
+  display: block;
+}
+
+.vu-meter-h-led-rack__scale-main {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: end;
+  min-height: 1rem;
+  column-gap: 0.22rem;
+}
+
+.vu-meter-h-led-rack__scale-post-zero {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  min-width: 2.2rem;
+  min-height: 1rem;
+  padding-left: 0.7rem;
+}
+
+.vu-meter-h-led-rack__scale-mark {
+  position: relative;
+  justify-self: center;
+  padding-bottom: 0.34rem;
+  white-space: nowrap;
+}
+
+.vu-meter-h-led-rack__scale-main .vu-meter-h-led-rack__scale-mark {
+  grid-column: var(--scale-column, auto);
+}
+
+.vu-meter-h-led-rack__scale-mark::before,
+.vu-meter-h-led-rack__scale-mark::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: rgba(255, 232, 173, 0.7);
+}
+
+.vu-meter-h-led-rack__scale-mark::before {
+  bottom: calc(100% - 0.06rem);
+  height: 0.22rem;
+}
+
+.vu-meter-h-led-rack__scale-mark::after {
+  top: calc(100% + 0.46rem);
+  height: 0.22rem;
+}
+
+.vu-meter-h-led-rack__scale-mark--start {
+  justify-self: start;
+  transform: translateX(-18%);
+}
+
+.vu-meter-h-led-rack__scale-mark--post-zero {
+  grid-column: 2;
+  justify-self: end;
+  transform: translateX(18%);
+  color: rgba(255, 151, 151, 0.94);
+}
+
+.vu-meter-h-led-rack--mono-continuous .vu-meter-h-led-rack__scale {
+  color: rgba(231, 245, 166, 0.92);
+  font-size: 0.6rem;
+}
+
+.vu-meter-h-led-rack--mono-comb .vu-meter-h-led-rack__scale {
+  display: none;
+}
+
+.vu-meter-h-led-rack--stereo-comb .vu-meter-h-led-rack__scale {
+  display: none;
+}
+
+.vu-meter-h-led-rack--mono-continuous .vu-meter-h-led-rack__scale-main {
+  column-gap: 0.34rem;
+}
+
+.vu-meter-h-led-rack--mono-comb .vu-meter-h-led-rack__scale-main {
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  column-gap: 0.46rem;
+}
+
+.vu-meter-h-led-rack--mono-continuous .vu-meter-h-led-rack__scale-post-zero {
+  min-width: 2.8rem;
+  padding-left: 0.9rem;
+}
+
+.vu-meter-h-led-rack--mono-continuous .vu-meter-h-led-rack__scale-mark::before,
+.vu-meter-h-led-rack--mono-continuous .vu-meter-h-led-rack__scale-mark::after {
+  height: 0.3rem;
+  background: rgba(208, 235, 132, 0.78);
+}
+
+.vu-meter-h-led-rack--mono-comb .vu-meter-h-led-rack__scale-mark::before,
+.vu-meter-h-led-rack--mono-comb .vu-meter-h-led-rack__scale-mark::after {
+  height: 0.2rem;
+  background: rgba(194, 226, 136, 0.66);
+}
+
+.vu-meter-h-led-row {
+  display: grid;
+  grid-template-columns: 1.2rem minmax(0, 1fr);
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.vu-meter-h-led-row__label {
+  color: rgba(255, 233, 173, 0.92);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+.vu-meter-h-led-row__segments {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+  padding-block: 0.22rem;
+}
+
+.vu-meter-h-led-row__guides {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0.22rem;
+  align-items: center;
+  grid-column: 1 / -1;
+  justify-items: center;
+}
+
+.vu-meter-h-led-rack--studio .vu-meter-h-led-row__guides {
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  gap: 0.18rem;
+}
+
+.vu-meter-h-led-guide {
+  display: block;
+  width: 0.16rem;
+  min-height: 0.72rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #d5ff49, #9ce11d);
+  box-shadow: 0 0 6px rgba(188, 255, 78, 0.2);
+}
+
+.vu-meter-h-led-rack--studio .vu-meter-h-led-guide {
+  width: 0.08rem;
+  min-height: 0.92rem;
+  background: linear-gradient(180deg, #d7ff68, #8ad419);
+}
+
+.vu-meter-h-led-rack--broadcast .vu-meter-h-led-row__segments {
+  gap: 0.65rem;
+}
+
+.vu-meter-h-led-rack--mono-continuous .vu-meter-h-led-row__segments {
+  gap: 0.82rem;
+  padding-block: 0.3rem;
+}
+
+.vu-meter-h-led-rack--mono-continuous .vu-meter-h-led-row__guides--mono {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0.42rem;
+}
+
+.vu-meter-h-led-rack--mono-comb .vu-meter-h-led-row__segments {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.14rem;
+  padding: 0.2rem 0.28rem;
+  border: 1px solid #4d4d4d;
+  border-top-color: #575757;
+  border-left-color: #575757;
+  border-right-color: #d6d6d6;
+  border-bottom-color: #d6d6d6;
+  background: #0c0c0c;
+  box-shadow:
+    inset 1px 1px 0 rgba(0, 0, 0, 0.45),
+    inset -1px -1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.vu-meter-h-led-rack--stereo-comb .vu-meter-h-led-row__segments {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.14rem;
+  padding: 0.2rem 0.28rem;
+  border: 1px solid #4d4d4d;
+  border-top-color: #575757;
+  border-left-color: #575757;
+  border-right-color: #d6d6d6;
+  border-bottom-color: #d6d6d6;
+  background: #0c0c0c;
+  box-shadow:
+    inset 1px 1px 0 rgba(0, 0, 0, 0.45),
+    inset -1px -1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.vu-meter-h-led-rack--mono-comb .vu-meter-h-led-row__guides--mono-comb {
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 0.46rem;
+}
+
+.vu-meter-h-led-rack--stereo-comb .vu-meter-h-led-row__guides--mono-comb {
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 0.46rem;
+}
+
+.vu-meter-h-led-row__segments-main {
+  display: grid;
+  grid-template-columns: repeat(20, minmax(0, 1fr));
+  gap: 0.16rem;
+  align-items: center;
+}
+
+.vu-meter-h-led-rack--studio .vu-meter-h-led-row__segments-main {
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  gap: 0.22rem;
+}
+
+.vu-meter-h-led-rack--broadcast .vu-meter-h-led-row__segments-main {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0.22rem;
+}
+
+.vu-meter-h-led-rack--mono-continuous .vu-meter-h-led-row__segments-main {
+  gap: 0.3rem;
+}
+
+.vu-meter-h-led-rack--mono-comb .vu-meter-h-led-row__segments-main {
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 0.46rem;
+}
+
+.vu-meter-h-led-rack--stereo-comb .vu-meter-h-led-row__segments-main {
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 0.46rem;
+}
+
+.vu-meter-h-led-row__segments-post-zero {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.16rem;
+  align-items: center;
+  padding-left: 0.55rem;
+  border-left: 2px solid rgba(255, 168, 112, 0.7);
+}
+
+.vu-meter-h-led-rack--broadcast .vu-meter-h-led-row__segments-post-zero {
+  gap: 0.22rem;
+  padding-left: 0.7rem;
+  border-left: 2px solid rgba(255, 120, 76, 0.92);
+}
+
+.vu-meter-h-led-rack--mono-continuous .vu-meter-h-led-row__segments-post-zero {
+  gap: 0.28rem;
+  padding-left: 0.9rem;
+  border-left: 3px solid rgba(255, 86, 56, 0.96);
+}
+
+.vu-meter-h-led {
+  display: block;
+  position: relative;
+  min-height: 0.72rem;
+  border-radius: 0.12rem;
+  background: rgba(92, 77, 38, 0.32);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 223, 145, 0.05),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.28);
+}
+
+.vu-meter-h-led-rack--studio .vu-meter-h-led {
+  min-height: 0.95rem;
+  border-radius: 0.08rem;
+}
+
+.vu-meter-h-led-rack--broadcast .vu-meter-h-led {
+  min-height: 1.2rem;
+  border-radius: 0.08rem;
+  background: rgba(72, 86, 22, 0.18);
+  box-shadow:
+    inset 0 0 0 1px rgba(220, 238, 126, 0.04),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.28);
+}
+
+.vu-meter-h-led-rack--mono-continuous .vu-meter-h-led {
+  min-height: 1.45rem;
+  border-radius: 0.14rem;
+  background: rgba(68, 90, 20, 0.14);
+  box-shadow:
+    inset 0 0 0 1px rgba(205, 229, 122, 0.06),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.32);
+}
+
+.vu-meter-h-led-guide--mono {
+  width: 0.12rem;
+  min-height: 1.45rem;
+  border-radius: 999px;
+  background: rgba(143, 182, 58, 0.22);
+  box-shadow: none;
+}
+
+.vu-meter-h-led-guide--mono.is-active {
+  background: linear-gradient(180deg, #cfff65, #7be11a);
+  box-shadow: 0 0 10px rgba(178, 255, 105, 0.26);
+}
+
+.vu-meter-h-led-rack--mono-comb .vu-meter-h-led {
+  min-height: 1rem;
+  border-radius: 0;
+  background: #203010;
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.05),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.45);
+}
+
+.vu-meter-h-led-rack--stereo-comb .vu-meter-h-led {
+  min-height: 1rem;
+  border-radius: 0;
+  background: #203010;
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.05),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.45);
+}
+
+.vu-meter-h-led-guide--mono-comb {
+  width: 0.08rem;
+  min-height: 0.72rem;
+  border-radius: 0;
+  background: #1d2a12;
+  box-shadow:
+    inset 1px 0 0 rgba(255, 255, 255, 0.04),
+    inset -1px 0 0 rgba(0, 0, 0, 0.42);
+}
+
+.vu-meter-h-led-guide--mono-comb.is-active {
+  background: linear-gradient(180deg, #b4ff65, #62d61c);
+  box-shadow: 0 0 6px rgba(154, 255, 89, 0.22);
+}
+
+.vu-meter-h-led.is-active {
+  background: linear-gradient(180deg, #8eff63, #47c61b);
+  box-shadow:
+    0 0 9px rgba(122, 255, 100, 0.34),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+.vu-meter-h-led-rack--broadcast .vu-meter-h-led.is-active {
+  background: linear-gradient(180deg, #b3ff60, #69dc1a);
+  box-shadow:
+    0 0 10px rgba(166, 255, 94, 0.3),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+
+.vu-meter-h-led-rack--mono-continuous .vu-meter-h-led.is-active {
+  background: linear-gradient(180deg, #ccff66, #7de11d);
+  box-shadow:
+    0 0 14px rgba(186, 255, 99, 0.34),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.vu-meter-h-led-rack--mono-comb .vu-meter-h-led.is-active {
+  background: linear-gradient(180deg, #b7ff66, #61d61c);
+  box-shadow:
+    0 0 7px rgba(164, 255, 95, 0.22),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.12),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.34);
+}
+
+.vu-meter-h-led-rack--stereo-comb .vu-meter-h-led.is-active {
+  background: linear-gradient(180deg, #b7ff66, #61d61c);
+  box-shadow:
+    0 0 7px rgba(164, 255, 95, 0.22),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.12),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.34);
+}
+
+.vu-meter-h-led.vu-meter-led--warm.is-active {
+  background: linear-gradient(180deg, #ffe86c, #ffb235);
+  box-shadow:
+    0 0 9px rgba(255, 176, 86, 0.36),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.vu-meter-h-led.vu-meter-led--danger.is-active {
+  background: linear-gradient(180deg, #ff8d5e, #ff4343);
+  box-shadow:
+    0 0 10px rgba(255, 98, 98, 0.42),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.vu-meter-h-led-rack--broadcast .vu-meter-h-led.vu-meter-led--danger.is-active {
+  background: linear-gradient(180deg, #ff8a5f, #ff3b30);
+  box-shadow:
+    0 0 12px rgba(255, 92, 92, 0.46),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+.vu-meter-h-led-rack--mono-continuous .vu-meter-h-led.vu-meter-led--warm.is-active {
+  background: linear-gradient(180deg, #fff078, #ffbe3f);
+  box-shadow:
+    0 0 13px rgba(255, 193, 88, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.vu-meter-h-led-rack--mono-comb .vu-meter-h-led.vu-meter-led--warm.is-active {
+  background: linear-gradient(180deg, #fff071, #f3bd3f);
+  box-shadow:
+    0 0 7px rgba(255, 204, 100, 0.22),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.12),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.34);
+}
+
+.vu-meter-h-led-rack--stereo-comb .vu-meter-h-led.vu-meter-led--warm.is-active {
+  background: linear-gradient(180deg, #fff071, #f3bd3f);
+  box-shadow:
+    0 0 7px rgba(255, 204, 100, 0.22),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.12),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.34);
+}
+
+.vu-meter-h-led-rack--stereo-comb .vu-meter-h-led.vu-meter-led--danger.is-active {
+  background: linear-gradient(180deg, #ff9569, #e04a2e);
+  box-shadow:
+    0 0 7px rgba(255, 112, 84, 0.2),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.12),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.34);
+}
+
+.vu-meter-h-led-rack--mono-comb .vu-meter-h-led.vu-meter-led--danger.is-active {
+  background: linear-gradient(180deg, #ff9569, #e04a2e);
+  box-shadow:
+    0 0 7px rgba(255, 112, 84, 0.2),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.12),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.34);
+}
+
+.vu-meter-h-led-rack--mono-comb .vu-meter-h-led-row__label {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.3rem;
+  padding: 0 0.22rem;
+  border: 1px solid #858585;
+  border-top-color: #f1f1f1;
+  border-left-color: #f1f1f1;
+  border-right-color: #565656;
+  border-bottom-color: #565656;
+  background: linear-gradient(180deg, #d2d2d2, #b5b5b5);
+  color: #18210f;
+  font-size: 0.52rem;
+  letter-spacing: 0.06em;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.vu-meter-h-led-rack--stereo-comb .vu-meter-h-led-row__label {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.3rem;
+  padding: 0 0.22rem;
+  border: 1px solid #858585;
+  border-top-color: #f1f1f1;
+  border-left-color: #f1f1f1;
+  border-right-color: #565656;
+  border-bottom-color: #565656;
+  background: linear-gradient(180deg, #d2d2d2, #b5b5b5);
+  color: #18210f;
+  font-size: 0.52rem;
+  letter-spacing: 0.06em;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.vu-meter-h-led-rack--mono-continuous .vu-meter-h-led.vu-meter-led--danger.is-active {
+  background: linear-gradient(180deg, #ff9a68, #ff3d2e);
+  box-shadow:
+    0 0 15px rgba(255, 96, 78, 0.48),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18);
 }
 
 .vu-meter-columns {
@@ -879,13 +1799,18 @@
   min-height: 7rem;
 }
 
+.vu-meter--wave-scope.vu-meter--floating .vu-meter-wave {
+  height: 100%;
+  min-height: 0;
+}
+
 .vu-meter-wave path {
   fill: none;
-  stroke: var(--theme-field-fg);
-  stroke-width: 2.6;
+  stroke: var(--vu-meter-wave-stroke);
+  stroke-width: 1.05;
   stroke-linecap: round;
   stroke-linejoin: round;
-  filter: drop-shadow(0 0 8px var(--vu-meter-glow));
+  filter: drop-shadow(0 0 3px var(--vu-meter-wave-glow));
 }
 
 .vu-meter-mini-bars {
@@ -958,7 +1883,9 @@
 
 .vu-meter-window__content {
   display: grid;
+  place-items: center;
   padding: 0.35rem 0.9rem 0.9rem;
+  overflow: hidden;
 }
 
 .vu-meter--windowed {
@@ -967,7 +1894,7 @@
   width: 100%;
   height: 100%;
   min-height: 0;
-  padding: 1rem;
+  padding: 0.8rem;
   transform: none;
 }
 
@@ -979,13 +1906,62 @@
 }
 
 .vu-meter--windowed .vu-meter-wave {
-  min-height: min(40vh, 12rem);
+  min-height: min(18vh, 5.5rem);
 }
 
 .vu-meter--windowed .vu-meter-spectrum,
 .vu-meter--windowed .vu-meter-mini-bars,
 .vu-meter--windowed .vu-meter-columns {
   min-height: min(42vh, 12rem);
+}
+
+.vu-meter--windowed.vu-meter--led-horizontal-mono .vu-meter-h-led-rack {
+  width: 100%;
+}
+
+.vu-meter--windowed.vu-meter--led-horizontal-stereo .vu-meter-h-led-rack {
+  width: 100%;
+}
+
+.vu-meter--windowed .vu-meter-h-led-rack__scale {
+  font-size: 0.62rem;
+}
+
+.vu-meter--windowed .vu-meter-h-led-row {
+  grid-template-columns: 1.7rem minmax(0, 1fr);
+  gap: 0.42rem;
+}
+
+.vu-meter--windowed .vu-meter-h-led-row__label {
+  font-size: 0.82rem;
+}
+
+.vu-meter--windowed .vu-meter-h-led-row__segments {
+  gap: 0.2rem;
+}
+
+.vu-meter--windowed .vu-meter-h-led {
+  min-height: 0.9rem;
+}
+
+.vu-meter--windowed.vu-meter--led-mono,
+.vu-meter--windowed.vu-meter--led-stereo {
+  padding: 0.2rem;
+}
+
+.vu-meter--windowed.vu-meter--led-mono .vu-meter-led-rack,
+.vu-meter--windowed.vu-meter--led-stereo .vu-meter-led-rack {
+  padding: 0.14rem 0.1rem;
+  border-width: 0;
+  border-radius: 0.28rem;
+  background: transparent;
+  box-shadow: none;
+}
+
+.vu-meter--windowed.vu-meter--led-mono .vu-meter-led-rack__scale,
+.vu-meter--windowed.vu-meter--led-stereo .vu-meter-led-rack__scale {
+  min-width: 0.72rem;
+  font-size: 0.4rem;
 }
 
 .select-field--compact {
