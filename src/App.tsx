@@ -74,6 +74,7 @@ type LautFmCurrentSong = {
 
 const STREAM_FETCH_TIMEOUT_MS = 5000;
 const STREAM_PLAY_TIMEOUT_MS = 7000;
+const VU_METER_TARGET_FPS = 24;
 const VU_METER_WINDOW_LABEL = 'vu-meter-window';
 const VU_METER_EVENT = 'clocklm://vu-meter';
 const VU_METER_STYLE_OPTIONS: Array<{ value: VuMeterStyle; label: string }> = [
@@ -1613,6 +1614,7 @@ function App() {
   const vuMeterConnectedAudioRef = useRef<HTMLAudioElement | null>(null);
   const vuMeterFrameRef = useRef<number | null>(null);
   const vuMeterSmoothedLevelsRef = useRef<number[]>([]);
+  const vuMeterLastPaintTimeRef = useRef(0);
   const liveDirectoryObjectUrlsRef = useRef<string[]>([]);
   const liveDirectoryTrackIndexRef = useRef(0);
   const liveDirectoryPlaybackModeRef = useRef<LiveDirectoryPlaybackMode>('normal');
@@ -2473,6 +2475,7 @@ function App() {
         vuMeterFrameRef.current = null;
       }
       vuMeterSmoothedLevelsRef.current = [];
+      vuMeterLastPaintTimeRef.current = 0;
       setVuMeterLevels([]);
       setVuMeterWaveform([]);
       return;
@@ -2552,7 +2555,14 @@ function App() {
       const leftWaveformData = new Uint8Array(leftAnalyser.fftSize);
       const rightWaveformData = new Uint8Array(rightAnalyser.fftSize);
 
-      const updateMeter = () => {
+      const updateMeter = (frameTime = performance.now()) => {
+        const minFrameInterval = 1000 / VU_METER_TARGET_FPS;
+        if (frameTime - vuMeterLastPaintTimeRef.current < minFrameInterval) {
+          vuMeterFrameRef.current = window.requestAnimationFrame(updateMeter);
+          return;
+        }
+
+        vuMeterLastPaintTimeRef.current = frameTime;
         leftAnalyser.getByteFrequencyData(leftFrequencyData);
         rightAnalyser.getByteFrequencyData(rightFrequencyData);
         leftAnalyser.getByteTimeDomainData(leftWaveformData);
@@ -2588,11 +2598,12 @@ function App() {
           vuMeterFrameRef.current = null;
         }
       };
-    } catch {
-      vuMeterSmoothedLevelsRef.current = [];
-      setVuMeterLevels([]);
-      setVuMeterWaveform([]);
-    }
+      } catch {
+        vuMeterSmoothedLevelsRef.current = [];
+        vuMeterLastPaintTimeRef.current = 0;
+        setVuMeterLevels([]);
+        setVuMeterWaveform([]);
+      }
   }, [liveRadioPlaybackState, vuMeterEnabled, vuMeterStyle]);
 
   useEffect(() => {
@@ -2618,10 +2629,8 @@ function App() {
         return;
       }
 
-      const vuUrl = new URL('vu-meter.html', window.location.href);
-
       const vuWindow = new webviewWindowApi.WebviewWindow(VU_METER_WINDOW_LABEL, {
-        url: vuUrl.toString(),
+        url: 'vu-meter.html',
         title: 'Clocklm VU-metre',
         width: 560,
         height: 320,
@@ -2656,7 +2665,7 @@ function App() {
         return;
       }
 
-      await eventApi.emit(VU_METER_EVENT, {
+      await eventApi.emitTo(VU_METER_WINDOW_LABEL, VU_METER_EVENT, {
         style: vuMeterStyle,
         levels: vuMeterLevels,
         waveform: vuMeterWaveform,

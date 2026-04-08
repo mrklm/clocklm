@@ -10,5 +10,13 @@ export default defineConfig(function (_a) {
         // local previews and manual hosting under a subdirectory.
         base: isProductionBuild || isTauriBuild ? './' : '/',
         plugins: [react()],
+        build: {
+            rollupOptions: {
+                input: {
+                    main: 'index.html',
+                    vuMeter: 'vu-meter.html',
+                },
+            },
+        },
     };
 });

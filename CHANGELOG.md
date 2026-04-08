@@ -4,6 +4,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
+## [1.0.43] - 2026-04-08
+
+### Modifié
+
+ - Affichage VU-metre dans le programme version build
+ - Lecture audio locale et stream version build
 
 ## [1.0.42] - 2026-04-08
 
