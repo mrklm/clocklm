@@ -5,6 +5,13 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.42] - 2026-04-08
+
+### Modifié
+
+ - Aligne toutes les versions applicatives sur le tag de release pour relancer les builds desktop
+
+
 ## [1.0.41] - 2026-04-06
 
 ### Modifié
