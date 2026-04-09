@@ -2551,20 +2551,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    void import('@tauri-apps/api/core').then(async (coreApi) => {
-      if (!coreApi.isTauri()) {
-        return;
-      }
-
-      const command = vuMeterEnabled && livePlaybackActive
-        ? 'start_system_vu_meter'
-        : 'stop_system_vu_meter';
-
-      await coreApi.invoke(command);
-    }).catch(() => undefined);
-  }, [livePlaybackActive, vuMeterEnabled]);
-
-  useEffect(() => {
     const activeAudio = liveRadioAudioRef.current;
     let cancelled = false;
 

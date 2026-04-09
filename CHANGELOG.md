@@ -5,6 +5,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.46] - 2026-04-09
+
+### Modifié
+
+ - Neutralisation du démarrage automatique backend natif Linux dans src/App.tsxpour eviter le gel au lancement des radios ou de l’ouverture d’un dossier local
+
 ## [1.0.45] - 2026-04-09
 
 ### Modifié
