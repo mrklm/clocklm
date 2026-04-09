@@ -4,6 +4,14 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
+
+## [1.0.44] - 2026-04-09
+
+### Modifié
+
+ - Anti décrochement du VU-mètre
+ - Modification taille des VU-mètre plein ecran 
+
 ## [1.0.43] - 2026-04-08
 
 ### Modifié

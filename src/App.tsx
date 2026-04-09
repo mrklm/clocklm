@@ -1,4 +1,5 @@
 import {
+  startTransition,
   useDeferredValue,
   useEffect,
   useMemo,
@@ -1615,6 +1616,10 @@ function App() {
   const vuMeterFrameRef = useRef<number | null>(null);
   const vuMeterSmoothedLevelsRef = useRef<number[]>([]);
   const vuMeterLastPaintTimeRef = useRef(0);
+  const vuMeterSilentSinceRef = useRef(0);
+  const vuMeterGraphBuildVersionRef = useRef(0);
+  const vuMeterReconnectInFlightRef = useRef(false);
+  const [vuMeterReconnectToken, setVuMeterReconnectToken] = useState(0);
   const liveDirectoryObjectUrlsRef = useRef<string[]>([]);
   const liveDirectoryTrackIndexRef = useRef(0);
   const liveDirectoryPlaybackModeRef = useRef<LiveDirectoryPlaybackMode>('normal');
@@ -2468,6 +2473,7 @@ function App() {
 
   useEffect(() => {
     const activeAudio = liveRadioAudioRef.current;
+    let cancelled = false;
 
     if (!vuMeterEnabled || !activeAudio || liveRadioPlaybackState !== 'playing') {
       if (vuMeterFrameRef.current !== null) {
@@ -2476,135 +2482,209 @@ function App() {
       }
       vuMeterSmoothedLevelsRef.current = [];
       vuMeterLastPaintTimeRef.current = 0;
+      vuMeterSilentSinceRef.current = 0;
+      vuMeterReconnectInFlightRef.current = false;
       setVuMeterLevels([]);
       setVuMeterWaveform([]);
       return;
     }
 
-    try {
-      const AudioContextCtor = window.AudioContext ?? (window as typeof window & {
-        webkitAudioContext?: typeof AudioContext;
-      }).webkitAudioContext;
+    void (async () => {
+      try {
+        const AudioContextCtor = window.AudioContext ?? (window as typeof window & {
+          webkitAudioContext?: typeof AudioContext;
+        }).webkitAudioContext;
 
-      if (!AudioContextCtor) {
-        return;
-      }
-
-      const audioContext =
-        vuMeterAudioContextRef.current ?? new AudioContextCtor();
-      vuMeterAudioContextRef.current = audioContext;
-
-      if (audioContext.state === 'suspended') {
-        void audioContext.resume();
-      }
-
-      if (vuMeterConnectedAudioRef.current !== activeAudio) {
-        vuMeterSourceRef.current?.disconnect();
-        vuMeterChannelSplitterRef.current?.disconnect();
-        vuMeterLeftAnalyserRef.current?.disconnect();
-        vuMeterRightAnalyserRef.current?.disconnect();
-        type CaptureCapableAudio = HTMLAudioElement & {
-          captureStream?: () => MediaStream;
-          mozCaptureStream?: () => MediaStream;
-        };
-
-        const captureAudio = activeAudio as CaptureCapableAudio;
-        const capturedStreamCandidate =
-          captureAudio.captureStream?.()
-          ?? captureAudio.mozCaptureStream?.()
-          ?? null;
-        const capturedStream =
-          capturedStreamCandidate && capturedStreamCandidate.getAudioTracks().length > 0
-            ? capturedStreamCandidate
-            : null;
-
-        const source = capturedStream
-          ? audioContext.createMediaStreamSource(capturedStream)
-          : audioContext.createMediaElementSource(activeAudio);
-
-        const splitter = audioContext.createChannelSplitter(2);
-        const leftAnalyser = audioContext.createAnalyser();
-        const rightAnalyser = audioContext.createAnalyser();
-        leftAnalyser.fftSize = 256;
-        rightAnalyser.fftSize = 256;
-        leftAnalyser.smoothingTimeConstant = 0.82;
-        rightAnalyser.smoothingTimeConstant = 0.82;
-
-        source.connect(splitter);
-        splitter.connect(leftAnalyser, 0);
-        splitter.connect(rightAnalyser, 1);
-        if (!capturedStream) {
-          source.connect(audioContext.destination);
-        }
-        vuMeterSourceRef.current = source;
-        vuMeterChannelSplitterRef.current = splitter;
-        vuMeterLeftAnalyserRef.current = leftAnalyser;
-        vuMeterRightAnalyserRef.current = rightAnalyser;
-        vuMeterConnectedAudioRef.current = activeAudio;
-        vuMeterSmoothedLevelsRef.current = [];
-      }
-
-      const leftAnalyser = vuMeterLeftAnalyserRef.current;
-      const rightAnalyser = vuMeterRightAnalyserRef.current;
-      if (!leftAnalyser || !rightAnalyser) {
-        return;
-      }
-
-      const leftFrequencyData = new Uint8Array(leftAnalyser.frequencyBinCount);
-      const rightFrequencyData = new Uint8Array(rightAnalyser.frequencyBinCount);
-      const leftWaveformData = new Uint8Array(leftAnalyser.fftSize);
-      const rightWaveformData = new Uint8Array(rightAnalyser.fftSize);
-
-      const updateMeter = (frameTime = performance.now()) => {
-        const minFrameInterval = 1000 / VU_METER_TARGET_FPS;
-        if (frameTime - vuMeterLastPaintTimeRef.current < minFrameInterval) {
-          vuMeterFrameRef.current = window.requestAnimationFrame(updateMeter);
+        if (!AudioContextCtor) {
           return;
         }
 
-        vuMeterLastPaintTimeRef.current = frameTime;
-        leftAnalyser.getByteFrequencyData(leftFrequencyData);
-        rightAnalyser.getByteFrequencyData(rightFrequencyData);
-        leftAnalyser.getByteTimeDomainData(leftWaveformData);
-        rightAnalyser.getByteTimeDomainData(rightWaveformData);
+        const shouldRebuildGraph =
+          vuMeterConnectedAudioRef.current !== activeAudio
+          || vuMeterGraphBuildVersionRef.current !== vuMeterReconnectToken;
 
-        const monoFrequencyData = averageFrequencyData(leftFrequencyData, rightFrequencyData);
-        const monoWaveformData = averageWaveformData(leftWaveformData, rightWaveformData);
-        const leftLevel = computeRmsLevel(leftWaveformData);
-        const rightLevel = computeRmsLevel(rightWaveformData);
-        const monoLevel = clamp01(Math.sqrt(((leftLevel ** 2) + (rightLevel ** 2)) / 2));
+        if (shouldRebuildGraph) {
+          if (vuMeterFrameRef.current !== null) {
+            window.cancelAnimationFrame(vuMeterFrameRef.current);
+            vuMeterFrameRef.current = null;
+          }
 
-        const nextLevels =
-          vuMeterStyle === 'needle-duo'
-          || vuMeterStyle === 'led-stereo'
-          || vuMeterStyle === 'led-horizontal-stereo'
-            ? [leftLevel, rightLevel]
-            : vuMeterStyle === 'led-mono' || vuMeterStyle === 'led-horizontal-mono'
-              ? [monoLevel]
-              : buildVuMeterColumns(monoFrequencyData, 20);
-        const smoothedLevels = smoothVuLevels(nextLevels, vuMeterSmoothedLevelsRef.current);
+          vuMeterSourceRef.current?.disconnect();
+          vuMeterChannelSplitterRef.current?.disconnect();
+          vuMeterLeftAnalyserRef.current?.disconnect();
+          vuMeterRightAnalyserRef.current?.disconnect();
+          vuMeterSourceRef.current = null;
+          vuMeterChannelSplitterRef.current = null;
+          vuMeterLeftAnalyserRef.current = null;
+          vuMeterRightAnalyserRef.current = null;
 
-        vuMeterSmoothedLevelsRef.current = smoothedLevels;
-        setVuMeterLevels(smoothedLevels);
-        setVuMeterWaveform(sampleWaveform(monoWaveformData, 52));
-        vuMeterFrameRef.current = window.requestAnimationFrame(updateMeter);
-      };
-
-      updateMeter();
-
-      return () => {
-        if (vuMeterFrameRef.current !== null) {
-          window.cancelAnimationFrame(vuMeterFrameRef.current);
-          vuMeterFrameRef.current = null;
+          const previousContext = vuMeterAudioContextRef.current;
+          vuMeterAudioContextRef.current = null;
+          if (previousContext && previousContext.state !== 'closed') {
+            await previousContext.close().catch(() => undefined);
+          }
         }
-      };
+
+        const audioContext = vuMeterAudioContextRef.current ?? new AudioContextCtor();
+        vuMeterAudioContextRef.current = audioContext;
+
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume().catch(() => undefined);
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        if (shouldRebuildGraph) {
+          type CaptureCapableAudio = HTMLAudioElement & {
+            captureStream?: () => MediaStream;
+            mozCaptureStream?: () => MediaStream;
+          };
+
+          const captureAudio = activeAudio as CaptureCapableAudio;
+          const capturedStreamCandidate =
+            captureAudio.captureStream?.()
+            ?? captureAudio.mozCaptureStream?.()
+            ?? null;
+          const capturedStream =
+            capturedStreamCandidate && capturedStreamCandidate.getAudioTracks().length > 0
+              ? capturedStreamCandidate
+              : null;
+
+          const source = capturedStream
+            ? audioContext.createMediaStreamSource(capturedStream)
+            : audioContext.createMediaElementSource(activeAudio);
+
+          const splitter = audioContext.createChannelSplitter(2);
+          const leftAnalyser = audioContext.createAnalyser();
+          const rightAnalyser = audioContext.createAnalyser();
+          leftAnalyser.fftSize = 256;
+          rightAnalyser.fftSize = 256;
+          leftAnalyser.smoothingTimeConstant = 0.82;
+          rightAnalyser.smoothingTimeConstant = 0.82;
+
+          source.connect(splitter);
+          splitter.connect(leftAnalyser, 0);
+          splitter.connect(rightAnalyser, 1);
+          if (!capturedStream) {
+            source.connect(audioContext.destination);
+          }
+
+          vuMeterSourceRef.current = source;
+          vuMeterChannelSplitterRef.current = splitter;
+          vuMeterLeftAnalyserRef.current = leftAnalyser;
+          vuMeterRightAnalyserRef.current = rightAnalyser;
+          vuMeterConnectedAudioRef.current = activeAudio;
+          vuMeterGraphBuildVersionRef.current = vuMeterReconnectToken;
+          vuMeterSmoothedLevelsRef.current = [];
+          vuMeterSilentSinceRef.current = 0;
+          vuMeterReconnectInFlightRef.current = false;
+        }
+
+        const leftAnalyser = vuMeterLeftAnalyserRef.current;
+        const rightAnalyser = vuMeterRightAnalyserRef.current;
+        if (!leftAnalyser || !rightAnalyser) {
+          return;
+        }
+
+        const leftFrequencyData = new Uint8Array(leftAnalyser.frequencyBinCount);
+        const rightFrequencyData = new Uint8Array(rightAnalyser.frequencyBinCount);
+        const leftWaveformData = new Uint8Array(leftAnalyser.fftSize);
+        const rightWaveformData = new Uint8Array(rightAnalyser.fftSize);
+
+        const updateMeter = (frameTime = performance.now()) => {
+          if (cancelled) {
+            return;
+          }
+
+          const minFrameInterval = 1000 / VU_METER_TARGET_FPS;
+          if (frameTime - vuMeterLastPaintTimeRef.current < minFrameInterval) {
+            vuMeterFrameRef.current = window.requestAnimationFrame(updateMeter);
+            return;
+          }
+
+          const currentContext = vuMeterAudioContextRef.current;
+          if (currentContext?.state === 'suspended') {
+            void currentContext.resume().catch(() => undefined);
+          }
+
+          vuMeterLastPaintTimeRef.current = frameTime;
+          leftAnalyser.getByteFrequencyData(leftFrequencyData);
+          rightAnalyser.getByteFrequencyData(rightFrequencyData);
+          leftAnalyser.getByteTimeDomainData(leftWaveformData);
+          rightAnalyser.getByteTimeDomainData(rightWaveformData);
+
+          const monoFrequencyData = averageFrequencyData(leftFrequencyData, rightFrequencyData);
+          const monoWaveformData = averageWaveformData(leftWaveformData, rightWaveformData);
+          const leftLevel = computeRmsLevel(leftWaveformData);
+          const rightLevel = computeRmsLevel(rightWaveformData);
+          const monoLevel = clamp01(Math.sqrt(((leftLevel ** 2) + (rightLevel ** 2)) / 2));
+
+          if (
+            monoLevel < 0.006
+            && !activeAudio.paused
+            && !activeAudio.ended
+            && activeAudio.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
+          ) {
+            if (vuMeterSilentSinceRef.current === 0) {
+              vuMeterSilentSinceRef.current = frameTime;
+            } else if (
+              frameTime - vuMeterSilentSinceRef.current > 3000
+              && !vuMeterReconnectInFlightRef.current
+            ) {
+              vuMeterReconnectInFlightRef.current = true;
+              vuMeterConnectedAudioRef.current = null;
+              vuMeterGraphBuildVersionRef.current = -1;
+              if (vuMeterFrameRef.current !== null) {
+                window.cancelAnimationFrame(vuMeterFrameRef.current);
+                vuMeterFrameRef.current = null;
+              }
+              startTransition(() => {
+                setVuMeterReconnectToken((currentValue) => currentValue + 1);
+              });
+              return;
+            }
+          } else {
+            vuMeterSilentSinceRef.current = 0;
+            vuMeterReconnectInFlightRef.current = false;
+          }
+
+          const nextLevels =
+            vuMeterStyle === 'needle-duo'
+            || vuMeterStyle === 'led-stereo'
+            || vuMeterStyle === 'led-horizontal-stereo'
+              ? [leftLevel, rightLevel]
+              : vuMeterStyle === 'led-mono' || vuMeterStyle === 'led-horizontal-mono'
+                ? [monoLevel]
+                : buildVuMeterColumns(monoFrequencyData, 20);
+          const smoothedLevels = smoothVuLevels(nextLevels, vuMeterSmoothedLevelsRef.current);
+
+          vuMeterSmoothedLevelsRef.current = smoothedLevels;
+          setVuMeterLevels(smoothedLevels);
+          setVuMeterWaveform(sampleWaveform(monoWaveformData, 52));
+          vuMeterFrameRef.current = window.requestAnimationFrame(updateMeter);
+        };
+
+        updateMeter();
       } catch {
         vuMeterSmoothedLevelsRef.current = [];
         vuMeterLastPaintTimeRef.current = 0;
+        vuMeterSilentSinceRef.current = 0;
+        vuMeterReconnectInFlightRef.current = false;
         setVuMeterLevels([]);
         setVuMeterWaveform([]);
       }
-  }, [liveRadioPlaybackState, vuMeterEnabled, vuMeterStyle]);
+    })();
+
+    return () => {
+      cancelled = true;
+      if (vuMeterFrameRef.current !== null) {
+        window.cancelAnimationFrame(vuMeterFrameRef.current);
+        vuMeterFrameRef.current = null;
+      }
+    };
+  }, [liveRadioPlaybackState, vuMeterEnabled, vuMeterStyle, vuMeterReconnectToken]);
 
   useEffect(() => {
     void Promise.all([
