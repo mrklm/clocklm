@@ -1,1 +1,1 @@
-{}
+{"default":{"identifier":"default","description":"Capacites par defaut pour la fenetre principale et la fenetre flottante du VU-metre.","local":true,"windows":["main","vu-meter-window"],"permissions":["core:default","core:window:allow-create","core:webview:allow-create-webview-window"]}}

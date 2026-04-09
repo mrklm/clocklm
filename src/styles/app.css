@@ -470,7 +470,7 @@
 .station-combobox-search {
   width: 100%;
   min-height: 42px;
-  padding: 0.65rem 0.85rem;
+  padding: 0.58rem 0.8rem;
   border: 1px solid color-mix(in srgb, var(--theme-fg) 7%, transparent);
   border-radius: 14px;
   color: var(--theme-field-fg);
@@ -480,9 +480,10 @@
 
 .station-combobox-trigger {
   display: grid;
-  gap: 0.12rem;
+  gap: 0.08rem;
   list-style: none;
   cursor: pointer;
+  font-size: 0.92rem;
 }
 
 .station-combobox-trigger-summary {
@@ -492,7 +493,7 @@
 
 .station-combobox-trigger-style,
 .station-combobox-trigger-meta {
-  font-size: 0.74rem;
+  font-size: 0.66rem;
   color: color-mix(in srgb, var(--theme-fg) 68%, transparent);
 }
 
@@ -533,8 +534,8 @@
   right: 0;
   z-index: 35;
   display: grid;
-  gap: 0.45rem;
-  padding: 0.45rem;
+  gap: 0.38rem;
+  padding: 0.4rem;
   border: 1px solid color-mix(in srgb, var(--theme-fg) 12%, transparent);
   border-radius: 16px;
   background: color-mix(in srgb, var(--theme-panel) 92%, black);
@@ -545,7 +546,7 @@
 .station-suggestions-label {
   margin: 0;
   padding: 0 0.2rem;
-  font-size: 0.7rem;
+  font-size: 0.64rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: color-mix(in srgb, var(--theme-accent) 72%, var(--theme-fg));
@@ -553,25 +554,26 @@
 
 .station-suggestions {
   display: grid;
-  gap: 0.35rem;
-  max-height: 14rem;
+  gap: 0.26rem;
+  max-height: 15.5rem;
   overflow-y: auto;
 }
 
 .station-suggestion {
   display: grid;
-  gap: 0.12rem;
+  gap: 0.08rem;
   width: 100%;
-  padding: 0.6rem 0.7rem;
+  padding: 0.46rem 0.62rem;
   border: 1px solid transparent;
   border-radius: 12px;
   color: var(--theme-field-fg);
   background: color-mix(in srgb, var(--theme-field) 46%, transparent);
   text-align: left;
+  font-size: 0.88rem;
 }
 
 .station-suggestion span:last-child {
-  font-size: 0.74rem;
+  font-size: 0.66rem;
   color: color-mix(in srgb, var(--theme-fg) 68%, transparent);
 }
 

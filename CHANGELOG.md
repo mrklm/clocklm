@@ -5,6 +5,14 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.45] - 2026-04-09
+
+### Modifié
+
+ - Amélioration de la selection des radios
+ - Recablage des VU-mètres sur les flux audio
+ - Amélioration comportement VU-mètres suivant la source
+
 ## [1.0.44] - 2026-04-09
 
 ### Modifié

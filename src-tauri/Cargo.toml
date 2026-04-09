@@ -1,6 +1,6 @@
 [package]
 name = "clocklm"
-version = "1.0.44"
+version = "1.0.45"
 description = "Clocklm desktop application"
 authors = ["Clocklm"]
 edition = "2021"
@@ -15,3 +15,4 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }

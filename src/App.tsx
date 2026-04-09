@@ -73,11 +73,19 @@ type LautFmCurrentSong = {
   title: string;
 };
 
+type NativeVuMeterPayload = {
+  left: number;
+  right: number;
+  waveform?: number[];
+  timestamp?: number;
+};
+
 const STREAM_FETCH_TIMEOUT_MS = 5000;
 const STREAM_PLAY_TIMEOUT_MS = 7000;
 const VU_METER_TARGET_FPS = 24;
 const VU_METER_WINDOW_LABEL = 'vu-meter-window';
 const VU_METER_EVENT = 'clocklm://vu-meter';
+const VU_METER_SYSTEM_EVENT = 'clocklm://vu-meter-system';
 const VU_METER_STYLE_OPTIONS: Array<{ value: VuMeterStyle; label: string }> = [
   { value: 'needle-duo', label: 'Analogique' },
   { value: 'led-mono', label: 'Leds vertical mono' },
@@ -628,7 +636,13 @@ const DEFAULT_LAUT_FM_STATIONS: LautFmStation[] = [
     'https://www.nts.live/infinite-mixtapes/low-key',
   ),
   createLautFmStation('lofi', 'laut.fm lofi', 'Lofi hip-hop / chill beats'),
-  createLautFmStation('natureadio', 'Naturadio', 'Ambient / folk / chill'),
+  createCustomStation(
+    'soma-groove-salad',
+    'SomaFM Groove Salad',
+    'Ambient / chill / downtempo',
+    'https://ice2.somafm.com/groovesalad-128-mp3',
+    'https://somafm.com/groovesalad/',
+  ),
   createCustomStation(
     'nts-field-recordings',
     'NTS Field Recordings',
@@ -671,17 +685,30 @@ const DEFAULT_LAUT_FM_STATIONS: LautFmStation[] = [
     'https://cashmereradio.out.airtime.pro/cashmereradio_b',
     'https://cashmereradio.com/about/',
   ),
+  createCustomStation(
+    'radio-swiss-jazz',
+    'Radio Swiss Jazz',
+    'Jazz / standards / swing / latin',
+    'https://stream.srg-ssr.ch/srgssr/rsj/mp3/128',
+    'https://www.radioswissjazz.ch/en/',
+  ),
+  createLautFmStation('jazz', 'laut.fm jazz', 'Jazz / soul / swing'),
+  createLautFmStation('jazzfm', 'laut.fm jazzfm', 'Jazz'),
+  createLautFmStation('jazzdings', 'laut.fm jazzdings', 'Jazz / blues'),
+  createLautFmStation('coolradio-jazz', 'laut.fm coolradio-jazz', 'Classic jazz'),
+  createLautFmStation('magicblue', 'laut.fm magicblue', 'Smooth jazz / chill-out'),
+  createLautFmStation('groovefm', 'laut.fm groovefm', 'Jazz / funk / acid-jazz'),
   createLautFmStation('soulmama', 'Soulmama', 'Soul / funk / jazz'),
   createLautFmStation('delasoul', 'Delasoul', 'Soul / funk / R&B'),
   createLautFmStation('soulfood', 'Soulfood', 'Soul / funk / jazz'),
   createLautFmStation('jazzrockfusion', 'Jazz Rock Fusion', 'Jazz fusion / funk'),
   createLautFmStation('bluesrockcafe', 'Blues Rock Cafe', 'Blues / rock'),
   createCustomStation(
-    'mutant-radio',
-    'Mutant Radio',
-    'Ambient / leftfield / experimental / underground',
-    'https://stream.mutantradio.net/memfs/052585f9-6013-4e45-b094-0f03b215814c.m3u8',
-    'https://www.mutantradio.net/',
+    'soma-sonic-universe',
+    'SomaFM Sonic Universe',
+    'Nu jazz / experimental / groove',
+    'https://ice2.somafm.com/sonicuniverse-128-mp3',
+    'https://somafm.com/sonicuniverse/',
   ),
   createLautFmStation('vaporwave', 'Vaporwave', 'Vaporwave / retro'),
 ];
@@ -689,7 +716,7 @@ const FEATURED_ALTERNATIVE_STATION_IDS = [
   'nts-slow-focus',
   'nts-low-key',
   'lofi',
-  'natureadio',
+  'soma-groove-salad',
   'nts-field-recordings',
   'nts-poolside',
   'nts-expansions',
@@ -948,25 +975,40 @@ async function playAudioFromCandidates(
   let lastError: unknown = null;
 
   for (const candidateUrl of candidateUrls) {
-    const audio = new Audio();
-    audio.preload = options?.preload ?? 'none';
-    audio.loop = options?.loop ?? false;
-    audio.crossOrigin = 'anonymous';
-    audio.src = candidateUrl;
+    for (const crossOriginMode of ['anonymous', null] as const) {
+      const audio = new Audio();
+      audio.preload = options?.preload ?? 'none';
+      audio.loop = options?.loop ?? false;
+      if (crossOriginMode) {
+        audio.crossOrigin = crossOriginMode;
+      }
+      audio.src = candidateUrl;
 
-    try {
-      await Promise.race([
-        audio.play(),
-        new Promise<never>((_, reject) => {
-          window.setTimeout(() => reject(new Error('audio_play_timeout')), STREAM_PLAY_TIMEOUT_MS);
-        }),
-      ]);
-      return audio;
-    } catch (error) {
-      lastError = error;
-      audio.pause();
-      audio.removeAttribute('src');
-      audio.load();
+      let timeoutId: number | null = null;
+
+      try {
+        await Promise.race([
+          audio.play(),
+          new Promise<never>((_, reject) => {
+            timeoutId = window.setTimeout(
+              () => reject(new Error('audio_play_timeout')),
+              STREAM_PLAY_TIMEOUT_MS,
+            );
+          }),
+        ]);
+        if (timeoutId !== null) {
+          window.clearTimeout(timeoutId);
+        }
+        return audio;
+      } catch (error) {
+        lastError = error;
+        if (timeoutId !== null) {
+          window.clearTimeout(timeoutId);
+        }
+        audio.pause();
+        audio.removeAttribute('src');
+        audio.load();
+      }
     }
   }
 
@@ -1558,6 +1600,8 @@ function App() {
   );
   const [vuMeterLevels, setVuMeterLevels] = useState<number[]>([]);
   const [vuMeterWaveform, setVuMeterWaveform] = useState<number[]>([]);
+  const [nativeVuMeterLevels, setNativeVuMeterLevels] = useState<number[]>([]);
+  const [nativeVuMeterWaveform, setNativeVuMeterWaveform] = useState<number[]>([]);
   const [appSignature, setAppSignature] = useState(APP_SIGNATURE_FALLBACK);
   const [isMobileSplashVisible, setIsMobileSplashVisible] = useState(isProbablyMobileDevice);
   const [alarms, setAlarms] = useState<AlarmDefinition[]>(
@@ -1620,6 +1664,7 @@ function App() {
   const vuMeterGraphBuildVersionRef = useRef(0);
   const vuMeterReconnectInFlightRef = useRef(false);
   const [vuMeterReconnectToken, setVuMeterReconnectToken] = useState(0);
+  const nativeVuMeterLastUpdateRef = useRef(0);
   const liveDirectoryObjectUrlsRef = useRef<string[]>([]);
   const liveDirectoryTrackIndexRef = useRef(0);
   const liveDirectoryPlaybackModeRef = useRef<LiveDirectoryPlaybackMode>('normal');
@@ -1809,6 +1854,12 @@ function App() {
     vuMeterEnabled && vuMeterMode === 'floating' && isTauriApp && !isVuMeterWindowView();
   const shouldShowClockDisplay = !vuMeterEnabled || vuMeterDisplay !== 'vu-meter';
   const shouldShowVuMeterDisplay = vuMeterEnabled && vuMeterDisplay !== 'clock';
+  const nativeVuMeterIsFresh = Date.now() - nativeVuMeterLastUpdateRef.current < 2500;
+  const shouldPreferNativeVuMeter = nativeVuMeterIsFresh && nativeVuMeterLevels.length > 0;
+  const activeVuMeterLevels = shouldPreferNativeVuMeter ? nativeVuMeterLevels : vuMeterLevels;
+  const activeVuMeterWaveform = shouldPreferNativeVuMeter
+    ? nativeVuMeterWaveform
+    : vuMeterWaveform;
   const themeStyle = {
     '--theme-bg': activeTheme.BG,
     '--theme-panel': activeTheme.PANEL,
@@ -2472,6 +2523,48 @@ function App() {
   }, []);
 
   useEffect(() => {
+    let unlisten: (() => void) | undefined;
+
+    void Promise.all([
+      import('@tauri-apps/api/core'),
+      import('@tauri-apps/api/event'),
+    ]).then(async ([coreApi, eventApi]) => {
+      if (!coreApi.isTauri()) {
+        return;
+      }
+
+      unlisten = await eventApi.listen<NativeVuMeterPayload>(VU_METER_SYSTEM_EVENT, (event) => {
+        const payload = event.payload;
+        const left = clamp01(payload.left ?? 0);
+        const right = clamp01(payload.right ?? left);
+        nativeVuMeterLastUpdateRef.current = payload.timestamp ?? Date.now();
+        setNativeVuMeterLevels([left, right]);
+        setNativeVuMeterWaveform(Array.isArray(payload.waveform) ? payload.waveform : []);
+      });
+    }).catch(() => undefined);
+
+    return () => {
+      if (unlisten) {
+        void unlisten();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    void import('@tauri-apps/api/core').then(async (coreApi) => {
+      if (!coreApi.isTauri()) {
+        return;
+      }
+
+      const command = vuMeterEnabled && livePlaybackActive
+        ? 'start_system_vu_meter'
+        : 'stop_system_vu_meter';
+
+      await coreApi.invoke(command);
+    }).catch(() => undefined);
+  }, [livePlaybackActive, vuMeterEnabled]);
+
+  useEffect(() => {
     const activeAudio = liveRadioAudioRef.current;
     let cancelled = false;
 
@@ -2547,10 +2640,7 @@ function App() {
             captureAudio.captureStream?.()
             ?? captureAudio.mozCaptureStream?.()
             ?? null;
-          const capturedStream =
-            capturedStreamCandidate && capturedStreamCandidate.getAudioTracks().length > 0
-              ? capturedStreamCandidate
-              : null;
+          const capturedStream = capturedStreamCandidate;
 
           const source = capturedStream
             ? audioContext.createMediaStreamSource(capturedStream)
@@ -2747,19 +2837,19 @@ function App() {
 
       await eventApi.emitTo(VU_METER_WINDOW_LABEL, VU_METER_EVENT, {
         style: vuMeterStyle,
-        levels: vuMeterLevels,
-        waveform: vuMeterWaveform,
+        levels: activeVuMeterLevels,
+        waveform: activeVuMeterWaveform,
         theme: activeTheme,
         playing: liveRadioPlaybackState === 'playing',
       } satisfies VuMeterWindowPayload);
     }).catch(() => {});
   }, [
     activeTheme,
+    activeVuMeterLevels,
+    activeVuMeterWaveform,
     liveRadioPlaybackState,
     shouldUseExternalVuMeterWindow,
-    vuMeterLevels,
     vuMeterStyle,
-    vuMeterWaveform,
   ]);
 
   useEffect(() => {
@@ -2889,8 +2979,8 @@ function App() {
             enabled={shouldShowVuMeterDisplay && vuMeterMode === 'integrated'}
             mode={vuMeterMode}
             style={vuMeterStyle}
-            levels={vuMeterLevels}
-            waveform={vuMeterWaveform}
+            levels={activeVuMeterLevels}
+            waveform={activeVuMeterWaveform}
           />
 
           <details
@@ -3524,8 +3614,8 @@ function App() {
         }
         mode={vuMeterMode}
         style={vuMeterStyle}
-        levels={vuMeterLevels}
-        waveform={vuMeterWaveform}
+        levels={activeVuMeterLevels}
+        waveform={activeVuMeterWaveform}
       />
     </AppShell>
   );
