@@ -5,6 +5,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.47] - 2026-04-10
+
+### Modifié
+
+ - Desactivation de src/App.tsx pour voir si c'est cela qui bloque l'audio dans les builds
+
 ## [1.0.46] - 2026-04-09
 
 ### Modifié

@@ -1856,6 +1856,10 @@ function App() {
   const shouldShowVuMeterDisplay = vuMeterEnabled && vuMeterDisplay !== 'clock';
   const nativeVuMeterIsFresh = Date.now() - nativeVuMeterLastUpdateRef.current < 2500;
   const shouldPreferNativeVuMeter = nativeVuMeterIsFresh && nativeVuMeterLevels.length > 0;
+  const isLinuxDesktopTauri =
+    isTauriApp
+    && typeof window !== 'undefined'
+    && /\bLinux\b/i.test(window.navigator.userAgent);
   const activeVuMeterLevels = shouldPreferNativeVuMeter ? nativeVuMeterLevels : vuMeterLevels;
   const activeVuMeterWaveform = shouldPreferNativeVuMeter
     ? nativeVuMeterWaveform
@@ -2554,11 +2558,25 @@ function App() {
     const activeAudio = liveRadioAudioRef.current;
     let cancelled = false;
 
-    if (!vuMeterEnabled || !activeAudio || liveRadioPlaybackState !== 'playing') {
+    if (
+      !vuMeterEnabled
+      || !activeAudio
+      || liveRadioPlaybackState !== 'playing'
+      || isLinuxDesktopTauri
+    ) {
       if (vuMeterFrameRef.current !== null) {
         window.cancelAnimationFrame(vuMeterFrameRef.current);
         vuMeterFrameRef.current = null;
       }
+      vuMeterSourceRef.current?.disconnect();
+      vuMeterChannelSplitterRef.current?.disconnect();
+      vuMeterLeftAnalyserRef.current?.disconnect();
+      vuMeterRightAnalyserRef.current?.disconnect();
+      vuMeterSourceRef.current = null;
+      vuMeterChannelSplitterRef.current = null;
+      vuMeterLeftAnalyserRef.current = null;
+      vuMeterRightAnalyserRef.current = null;
+      vuMeterConnectedAudioRef.current = null;
       vuMeterSmoothedLevelsRef.current = [];
       vuMeterLastPaintTimeRef.current = 0;
       vuMeterSilentSinceRef.current = 0;
@@ -2760,7 +2778,7 @@ function App() {
         vuMeterFrameRef.current = null;
       }
     };
-  }, [liveRadioPlaybackState, vuMeterEnabled, vuMeterStyle, vuMeterReconnectToken]);
+  }, [isLinuxDesktopTauri, liveRadioPlaybackState, vuMeterEnabled, vuMeterStyle, vuMeterReconnectToken]);
 
   useEffect(() => {
     void Promise.all([
