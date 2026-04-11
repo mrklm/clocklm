@@ -104,33 +104,6 @@ function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
 }
 
-function isVuMeterWindowView() {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-
-  const locationUrl = new URL(window.location.href);
-  if (
-    locationUrl.searchParams.get('view') === 'vu-meter' ||
-    locationUrl.hash === '#vu-meter' ||
-    locationUrl.pathname.endsWith('/vu-meter')
-  ) {
-    return true;
-  }
-
-  const tauriLabel = (window as Window & {
-    __TAURI_INTERNALS__?: {
-      metadata?: {
-        currentWebview?: {
-          label?: string;
-        };
-      };
-    };
-  }).__TAURI_INTERNALS__?.metadata?.currentWebview?.label;
-
-  return tauriLabel === VU_METER_WINDOW_LABEL;
-}
-
 function isTauriRuntime() {
   if (typeof window === 'undefined') {
     return false;
@@ -1850,8 +1823,7 @@ function App() {
     isAppleWebKit ? 'clock-layout--apple-webkit' : '',
     supportsColorMix ? '' : 'clock-layout--no-color-mix',
   ].filter(Boolean).join(' ');
-  const shouldUseExternalVuMeterWindow =
-    vuMeterEnabled && vuMeterMode === 'floating' && isTauriApp && !isVuMeterWindowView();
+  const shouldUseExternalVuMeterWindow = false;
   const shouldShowClockDisplay = !vuMeterEnabled || vuMeterDisplay !== 'vu-meter';
   const shouldShowVuMeterDisplay = vuMeterEnabled && vuMeterDisplay !== 'clock';
   const nativeVuMeterIsFresh = Date.now() - nativeVuMeterLastUpdateRef.current < 2500;

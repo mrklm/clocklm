@@ -5,6 +5,13 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.48] - 2026-04-11
+
+### Modifié
+
+ - macOS : désactivation temporaire de la fenêtre VU-mètre séparée Tauri, avec rendu recentré dans la fenêtre principale
+ - Linux : neutralisation provisoire des chemins VU-mètre natifs/Web Audio suspects pour tenter de stabiliser la lecture radio et locale
+
 ## [1.0.47] - 2026-04-10
 
 ### Modifié
