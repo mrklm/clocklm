@@ -943,12 +943,16 @@ async function playAudioFromCandidates(
   options?: {
     preload?: HTMLMediaElement['preload'];
     loop?: boolean;
+    preferCrossOrigin?: boolean;
   },
 ) {
   let lastError: unknown = null;
 
   for (const candidateUrl of candidateUrls) {
-    for (const crossOriginMode of ['anonymous', null] as const) {
+    const crossOriginModes = options?.preferCrossOrigin === false
+      ? [null, 'anonymous'] as const
+      : ['anonymous', null] as const;
+    for (const crossOriginMode of crossOriginModes) {
       const audio = new Audio();
       audio.preload = options?.preload ?? 'none';
       audio.loop = options?.loop ?? false;
@@ -1638,6 +1642,7 @@ function App() {
   const vuMeterReconnectInFlightRef = useRef(false);
   const [vuMeterReconnectToken, setVuMeterReconnectToken] = useState(0);
   const nativeVuMeterLastUpdateRef = useRef(0);
+  const liveAudioStoppingRef = useRef(false);
   const liveDirectoryObjectUrlsRef = useRef<string[]>([]);
   const liveDirectoryTrackIndexRef = useRef(0);
   const liveDirectoryPlaybackModeRef = useRef<LiveDirectoryPlaybackMode>('normal');
@@ -1899,14 +1904,20 @@ function App() {
 
   const stopLiveRadioPlayback = () => {
     const activeAudio = liveRadioAudioRef.current;
+    liveAudioStoppingRef.current = true;
     if (activeAudio) {
       activeAudio.onended = null;
+      activeAudio.onerror = null;
       activeAudio.pause();
       activeAudio.src = '';
+      activeAudio.load();
       liveRadioAudioRef.current = null;
     }
 
     setLiveRadioPlaybackState('idle');
+    window.setTimeout(() => {
+      liveAudioStoppingRef.current = false;
+    }, 0);
   };
 
   const getNextDirectoryTrackIndex = (
@@ -2114,6 +2125,7 @@ function App() {
       }
       const audio = await playAudioFromCandidates(candidateUrls, {
         preload: 'none',
+        preferCrossOrigin: !isTauriApp,
       });
       liveRadioAudioRef.current = audio;
       setLiveRadioPlaybackState('playing');
@@ -2171,11 +2183,14 @@ function App() {
       liveDirectoryTrackIndexRef.current = trackIndex;
 
       const audio = liveRadioAudioRef.current ?? new Audio();
+      liveAudioStoppingRef.current = false;
       audio.pause();
       audio.onended = null;
       audio.onerror = null;
       audio.preload = 'auto';
-      audio.crossOrigin = 'anonymous';
+      if (!isTauriApp) {
+        audio.crossOrigin = 'anonymous';
+      }
 
       if (audio.src !== objectUrl) {
         audio.src = objectUrl;
@@ -2184,6 +2199,9 @@ function App() {
 
       audio.preload = 'auto';
       audio.onended = () => {
+        if (liveAudioStoppingRef.current) {
+          return;
+        }
         const nextIndex = getNextDirectoryTrackIndex(
           trackIndex,
           'next',
@@ -2196,6 +2214,9 @@ function App() {
         void playLiveDirectoryTrack(nextIndex);
       };
       audio.onerror = () => {
+        if (liveAudioStoppingRef.current) {
+          return;
+        }
         const nextIndex = getNextDirectoryTrackIndex(
           trackIndex,
           'next',

@@ -5,6 +5,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.49] - 2026-04-11
+
+### Modifié
+
+ - Correction stop musique locale et ajustements audio desktop
+
 ## [1.0.48] - 2026-04-11
 
 ### Modifié
