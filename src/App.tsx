@@ -944,6 +944,7 @@ async function playAudioFromCandidates(
     preload?: HTMLMediaElement['preload'];
     loop?: boolean;
     preferCrossOrigin?: boolean;
+    audioElement?: HTMLAudioElement | null;
   },
 ) {
   let lastError: unknown = null;
@@ -953,11 +954,16 @@ async function playAudioFromCandidates(
       ? [null, 'anonymous'] as const
       : ['anonymous', null] as const;
     for (const crossOriginMode of crossOriginModes) {
-      const audio = new Audio();
+      const audio = options?.audioElement ?? new Audio();
+      audio.pause();
+      audio.onended = null;
+      audio.onerror = null;
       audio.preload = options?.preload ?? 'none';
       audio.loop = options?.loop ?? false;
       if (crossOriginMode) {
         audio.crossOrigin = crossOriginMode;
+      } else {
+        audio.removeAttribute('crossorigin');
       }
       audio.src = candidateUrl;
 
@@ -1626,6 +1632,7 @@ function App() {
   const alarmFileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const alarmFilesRef = useRef<Record<string, File | null>>({});
   const triggeredAlarmKeysRef = useRef<Set<string>>(new Set());
+  const liveAudioElementRef = useRef<HTMLAudioElement | null>(null);
   const liveRadioAudioRef = useRef<HTMLAudioElement | null>(null);
   const liveDirectoryInputRef = useRef<HTMLInputElement | null>(null);
   const vuMeterAudioContextRef = useRef<AudioContext | null>(null);
@@ -2123,9 +2130,11 @@ function App() {
       if (candidateUrls.length === 0) {
         throw new Error('station_stream_unavailable');
       }
+      const audioElement = liveAudioElementRef.current;
       const audio = await playAudioFromCandidates(candidateUrls, {
         preload: 'none',
         preferCrossOrigin: !isTauriApp,
+        audioElement,
       });
       liveRadioAudioRef.current = audio;
       setLiveRadioPlaybackState('playing');
@@ -2182,7 +2191,7 @@ function App() {
       liveDirectoryObjectUrlsRef.current[trackIndex] = objectUrl;
       liveDirectoryTrackIndexRef.current = trackIndex;
 
-      const audio = liveRadioAudioRef.current ?? new Audio();
+      const audio = liveRadioAudioRef.current ?? liveAudioElementRef.current ?? new Audio();
       liveAudioStoppingRef.current = false;
       audio.pause();
       audio.onended = null;
@@ -3613,6 +3622,12 @@ function App() {
         style={vuMeterStyle}
         levels={activeVuMeterLevels}
         waveform={activeVuMeterWaveform}
+      />
+      <audio
+        ref={liveAudioElementRef}
+        className="sr-only"
+        preload="none"
+        aria-hidden="true"
       />
     </AppShell>
   );
