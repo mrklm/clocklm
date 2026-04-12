@@ -5,6 +5,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.51] - 2026-04-12
+
+### Modifié
+
+ - Ajout de logs debug desktop pour diagnostiquer l'audio et les VU-metres sur macOS et Linux
+
 ## [1.0.50] - 2026-04-12
 
 ### Modifié

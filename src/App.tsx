@@ -112,6 +112,55 @@ function isTauriRuntime() {
   return '__TAURI_INTERNALS__' in window;
 }
 
+function getMediaErrorLabel(error: MediaError | null | undefined) {
+  switch (error?.code) {
+    case MediaError.MEDIA_ERR_ABORTED:
+      return 'aborted';
+    case MediaError.MEDIA_ERR_NETWORK:
+      return 'network';
+    case MediaError.MEDIA_ERR_DECODE:
+      return 'decode';
+    case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+      return 'src_not_supported';
+    default:
+      return 'unknown';
+  }
+}
+
+function buildAudioDebugSnapshot(audio: HTMLAudioElement | null | undefined) {
+  if (!audio) {
+    return { present: false };
+  }
+
+  return {
+    present: true,
+    src: audio.currentSrc || audio.src || '',
+    paused: audio.paused,
+    ended: audio.ended,
+    readyState: audio.readyState,
+    networkState: audio.networkState,
+    currentTime: Number.isFinite(audio.currentTime) ? Number(audio.currentTime.toFixed(3)) : 0,
+    duration: Number.isFinite(audio.duration) ? Number(audio.duration.toFixed(3)) : null,
+    volume: Number.isFinite(audio.volume) ? Number(audio.volume.toFixed(3)) : 1,
+    muted: audio.muted,
+    crossOrigin: audio.crossOrigin || 'none',
+    error: getMediaErrorLabel(audio.error),
+  };
+}
+
+function logDesktopMediaDebug(scope: string, details?: Record<string, unknown>) {
+  if (!isTauriRuntime()) {
+    return;
+  }
+
+  if (details) {
+    console.info(`[clocklm][desktop-media] ${scope}`, details);
+    return;
+  }
+
+  console.info(`[clocklm][desktop-media] ${scope}`);
+}
+
 function sampleWaveform(values: Uint8Array, points = 48) {
   if (values.length === 0 || points <= 0) {
     return [];
@@ -955,6 +1004,12 @@ async function playAudioFromCandidates(
       : ['anonymous', null] as const;
     for (const crossOriginMode of crossOriginModes) {
       const audio = options?.audioElement ?? new Audio();
+      logDesktopMediaDebug('playAudioFromCandidates:attempt', {
+        candidateUrl,
+        crossOriginMode: crossOriginMode ?? 'none',
+        reusingAudioElement: Boolean(options?.audioElement),
+        snapshotBefore: buildAudioDebugSnapshot(audio),
+      });
       audio.pause();
       audio.onended = null;
       audio.onerror = null;
@@ -982,12 +1037,23 @@ async function playAudioFromCandidates(
         if (timeoutId !== null) {
           window.clearTimeout(timeoutId);
         }
+        logDesktopMediaDebug('playAudioFromCandidates:success', {
+          candidateUrl,
+          crossOriginMode: crossOriginMode ?? 'none',
+          snapshotAfter: buildAudioDebugSnapshot(audio),
+        });
         return audio;
       } catch (error) {
         lastError = error;
         if (timeoutId !== null) {
           window.clearTimeout(timeoutId);
         }
+        logDesktopMediaDebug('playAudioFromCandidates:failure', {
+          candidateUrl,
+          crossOriginMode: crossOriginMode ?? 'none',
+          error: error instanceof Error ? error.message : String(error),
+          snapshotAfter: buildAudioDebugSnapshot(audio),
+        });
         audio.pause();
         audio.removeAttribute('src');
         audio.load();
@@ -1663,6 +1729,55 @@ function App() {
   const deferredLiveRadioSearch = useDeferredValue(liveRadioSearch);
 
   useEffect(() => {
+    const audio = liveAudioElementRef.current;
+    if (!audio || !isTauriApp) {
+      return;
+    }
+
+    const audioEvents = [
+      'loadstart',
+      'loadedmetadata',
+      'loadeddata',
+      'canplay',
+      'canplaythrough',
+      'play',
+      'playing',
+      'pause',
+      'waiting',
+      'stalled',
+      'suspend',
+      'seeking',
+      'seeked',
+      'ended',
+      'error',
+    ] as const;
+
+    const cleanupFns = audioEvents.map((eventName) => {
+      const handler = () => {
+        logDesktopMediaDebug(`audio-element:${eventName}`, {
+          source: liveAudioSource,
+          playbackState: liveRadioPlaybackState,
+          snapshot: buildAudioDebugSnapshot(audio),
+        });
+      };
+      audio.addEventListener(eventName, handler);
+      return () => {
+        audio.removeEventListener(eventName, handler);
+      };
+    });
+
+    logDesktopMediaDebug('audio-element:attached', {
+      snapshot: buildAudioDebugSnapshot(audio),
+    });
+
+    return () => {
+      cleanupFns.forEach((cleanup) => {
+        cleanup();
+      });
+    };
+  }, [isTauriApp, liveAudioSource, liveRadioPlaybackState]);
+
+  useEffect(() => {
     if (!isProbablyMobileDevice()) {
       setIsMobileSplashVisible(false);
       return;
@@ -1911,6 +2026,11 @@ function App() {
 
   const stopLiveRadioPlayback = () => {
     const activeAudio = liveRadioAudioRef.current;
+    logDesktopMediaDebug('stopLiveRadioPlayback:start', {
+      source: liveAudioSource,
+      playbackState: liveRadioPlaybackState,
+      snapshot: buildAudioDebugSnapshot(activeAudio),
+    });
     liveAudioStoppingRef.current = true;
     if (activeAudio) {
       activeAudio.onended = null;
@@ -1925,6 +2045,10 @@ function App() {
     window.setTimeout(() => {
       liveAudioStoppingRef.current = false;
     }, 0);
+    logDesktopMediaDebug('stopLiveRadioPlayback:end', {
+      source: liveAudioSource,
+      playbackState: 'idle',
+    });
   };
 
   const getNextDirectoryTrackIndex = (
@@ -2103,6 +2227,7 @@ function App() {
 
   const startLiveRadioPlayback = async () => {
     if (liveRadioPlaybackState === 'loading') {
+      logDesktopMediaDebug('startLiveRadioPlayback:ignored-loading');
       return;
     }
 
@@ -2112,9 +2237,18 @@ function App() {
       liveAudioSource === 'radio'
     ) {
       try {
+        logDesktopMediaDebug('startLiveRadioPlayback:resume-attempt', {
+          snapshot: buildAudioDebugSnapshot(liveRadioAudioRef.current),
+        });
         await liveRadioAudioRef.current.play();
         setLiveRadioPlaybackState('playing');
+        logDesktopMediaDebug('startLiveRadioPlayback:resume-success', {
+          snapshot: buildAudioDebugSnapshot(liveRadioAudioRef.current),
+        });
       } catch {
+        logDesktopMediaDebug('startLiveRadioPlayback:resume-failure', {
+          snapshot: buildAudioDebugSnapshot(liveRadioAudioRef.current),
+        });
         stopLiveRadioPlayback();
         setLiveRadioPlaybackState('error');
       }
@@ -2127,6 +2261,10 @@ function App() {
 
     try {
       const candidateUrls = await prepareStationStreamUrls(selectedLiveRadioStation);
+      logDesktopMediaDebug('startLiveRadioPlayback:candidates', {
+        stationId: selectedLiveRadioStation.id,
+        candidateUrls,
+      });
       if (candidateUrls.length === 0) {
         throw new Error('station_stream_unavailable');
       }
@@ -2138,7 +2276,15 @@ function App() {
       });
       liveRadioAudioRef.current = audio;
       setLiveRadioPlaybackState('playing');
-    } catch {
+      logDesktopMediaDebug('startLiveRadioPlayback:playing', {
+        stationId: selectedLiveRadioStation.id,
+        snapshot: buildAudioDebugSnapshot(audio),
+      });
+    } catch (error) {
+      logDesktopMediaDebug('startLiveRadioPlayback:error', {
+        stationId: selectedLiveRadioStation.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
       stopLiveRadioPlayback();
       setLiveRadioPlaybackState('error');
     }
@@ -2157,9 +2303,22 @@ function App() {
       trackIndex === liveDirectoryTrackIndexRef.current
     ) {
       try {
+        logDesktopMediaDebug('playLiveDirectoryTrack:resume-attempt', {
+          trackIndex,
+          snapshot: buildAudioDebugSnapshot(liveRadioAudioRef.current),
+        });
         await liveRadioAudioRef.current.play();
         setLiveRadioPlaybackState('playing');
-      } catch {
+        logDesktopMediaDebug('playLiveDirectoryTrack:resume-success', {
+          trackIndex,
+          snapshot: buildAudioDebugSnapshot(liveRadioAudioRef.current),
+        });
+      } catch (error) {
+        logDesktopMediaDebug('playLiveDirectoryTrack:resume-failure', {
+          trackIndex,
+          error: error instanceof Error ? error.message : String(error),
+          snapshot: buildAudioDebugSnapshot(liveRadioAudioRef.current),
+        });
         stopLiveRadioPlayback();
         setLiveRadioPlaybackState('error');
       }
@@ -2193,6 +2352,13 @@ function App() {
 
       const audio = liveRadioAudioRef.current ?? liveAudioElementRef.current ?? new Audio();
       liveAudioStoppingRef.current = false;
+      logDesktopMediaDebug('playLiveDirectoryTrack:prepare', {
+        trackIndex,
+        fileName: selectedTrack.name,
+        objectUrl,
+        reusingAudioElement: audio === liveAudioElementRef.current,
+        snapshotBefore: buildAudioDebugSnapshot(audio),
+      });
       audio.pause();
       audio.onended = null;
       audio.onerror = null;
@@ -2242,7 +2408,17 @@ function App() {
       setLiveDirectoryTrackLabel(selectedTrack.name || liveDirectoryName);
       await audio.play();
       setLiveRadioPlaybackState('playing');
-    } catch {
+      logDesktopMediaDebug('playLiveDirectoryTrack:playing', {
+        trackIndex,
+        fileName: selectedTrack.name,
+        snapshotAfter: buildAudioDebugSnapshot(liveRadioAudioRef.current),
+      });
+    } catch (error) {
+      logDesktopMediaDebug('playLiveDirectoryTrack:error', {
+        trackIndex,
+        error: error instanceof Error ? error.message : String(error),
+        snapshot: buildAudioDebugSnapshot(liveRadioAudioRef.current),
+      });
       stopLiveRadioPlayback();
       setLiveRadioPlaybackState('error');
     }
@@ -2585,6 +2761,12 @@ function App() {
       vuMeterReconnectInFlightRef.current = false;
       setVuMeterLevels([]);
       setVuMeterWaveform([]);
+      logDesktopMediaDebug('vu-meter:disabled', {
+        vuMeterEnabled,
+        hasActiveAudio: Boolean(activeAudio),
+        playbackState: liveRadioPlaybackState,
+        isLinuxDesktopTauri,
+      });
       return;
     }
 
@@ -2595,6 +2777,7 @@ function App() {
         }).webkitAudioContext;
 
         if (!AudioContextCtor) {
+          logDesktopMediaDebug('vu-meter:no-audio-context');
           return;
         }
 
@@ -2626,9 +2809,17 @@ function App() {
 
         const audioContext = vuMeterAudioContextRef.current ?? new AudioContextCtor();
         vuMeterAudioContextRef.current = audioContext;
+        logDesktopMediaDebug('vu-meter:context-ready', {
+          state: audioContext.state,
+          shouldRebuildGraph,
+          snapshot: buildAudioDebugSnapshot(activeAudio),
+        });
 
         if (audioContext.state === 'suspended') {
           await audioContext.resume().catch(() => undefined);
+          logDesktopMediaDebug('vu-meter:context-resume-attempt', {
+            state: audioContext.state,
+          });
         }
 
         if (cancelled) {
@@ -2647,6 +2838,10 @@ function App() {
             ?? captureAudio.mozCaptureStream?.()
             ?? null;
           const capturedStream = capturedStreamCandidate;
+          logDesktopMediaDebug('vu-meter:build-graph', {
+            strategy: capturedStream ? 'captureStream' : 'mediaElementSource',
+            snapshot: buildAudioDebugSnapshot(activeAudio),
+          });
 
           const source = capturedStream
             ? audioContext.createMediaStreamSource(capturedStream)
@@ -2739,6 +2934,11 @@ function App() {
               startTransition(() => {
                 setVuMeterReconnectToken((currentValue) => currentValue + 1);
               });
+              logDesktopMediaDebug('vu-meter:reconnect-requested', {
+                monoLevel,
+                playbackState: liveRadioPlaybackState,
+                snapshot: buildAudioDebugSnapshot(activeAudio),
+              });
               return;
             }
           } else {
@@ -2763,7 +2963,12 @@ function App() {
         };
 
         updateMeter();
-      } catch {
+      } catch (error) {
+        logDesktopMediaDebug('vu-meter:error', {
+          error: error instanceof Error ? error.message : String(error),
+          snapshot: buildAudioDebugSnapshot(activeAudio),
+          contextState: vuMeterAudioContextRef.current?.state ?? 'missing',
+        });
         vuMeterSmoothedLevelsRef.current = [];
         vuMeterLastPaintTimeRef.current = 0;
         vuMeterSilentSinceRef.current = 0;
@@ -2779,6 +2984,9 @@ function App() {
         window.cancelAnimationFrame(vuMeterFrameRef.current);
         vuMeterFrameRef.current = null;
       }
+      logDesktopMediaDebug('vu-meter:cleanup', {
+        snapshot: buildAudioDebugSnapshot(activeAudio),
+      });
     };
   }, [isLinuxDesktopTauri, liveRadioPlaybackState, vuMeterEnabled, vuMeterStyle, vuMeterReconnectToken]);
 
