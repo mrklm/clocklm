@@ -5,6 +5,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.52] - 2026-04-12
+
+### Modifié
+
+ - Ajout d'un contournement runtime Linux pour limiter les soucis audio lies a VAAPI et dmabuf
+
 ## [1.0.51] - 2026-04-12
 
 ### Modifié

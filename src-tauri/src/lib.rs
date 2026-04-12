@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::env;
 use std::io::Read;
 use std::process::{Child, ChildStdout, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -210,6 +211,17 @@ fn stop_capture_locked(capture: &mut Option<SystemVuMeterCapture>) {
   }
 }
 
+#[cfg(target_os = "linux")]
+fn configure_linux_media_runtime() {
+  // Favor the most conservative Linux runtime path for packaged builds.
+  // This helps avoid VAAPI / dmabuf related stalls seen on older Intel stacks.
+  unsafe {
+    env::set_var("GST_VAAPI_ALL_DRIVERS", "0");
+    env::set_var("GST_PLUGIN_FEATURE_RANK", "vaapidecodebin:0");
+    env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+  }
+}
+
 #[tauri::command]
 fn start_system_vu_meter(
   app: AppHandle,
@@ -261,6 +273,9 @@ fn stop_system_vu_meter(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+  #[cfg(target_os = "linux")]
+  configure_linux_media_runtime();
+
   tauri::Builder::default()
     .manage(SystemVuMeterRuntime::default())
     .invoke_handler(tauri::generate_handler![
