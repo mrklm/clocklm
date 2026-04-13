@@ -5,6 +5,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.54] - 2026-04-13
+
+### Modifié
+
+ - Lecture locale desktop recablee sur le protocole de fichiers Tauri
+
 ## [1.0.53] - 2026-04-13
 
 ### Modifié

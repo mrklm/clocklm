@@ -1,6 +1,6 @@
 [package]
 name = "clocklm"
-version = "1.0.53"
+version = "1.0.54"
 description = "Clocklm desktop application"
 authors = ["Clocklm"]
 edition = "2021"
@@ -14,7 +14,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["protocol-asset"] }
 serde = { version = "1", features = ["derive"] }
 rfd = "0.15"
 walkdir = "2"
