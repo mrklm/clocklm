@@ -80,6 +80,24 @@ type NativeVuMeterPayload = {
   timestamp?: number;
 };
 
+type NativeDirectoryTrack = {
+  name: string;
+  path: string;
+  relativePath: string;
+};
+
+type NativeDirectorySelectionPayload = {
+  directoryName: string;
+  tracks: NativeDirectoryTrack[];
+};
+
+type LiveDirectoryTrack = {
+  name: string;
+  relativePath: string;
+  sourceUrl: string;
+  revokeOnClear?: boolean;
+};
+
 const STREAM_FETCH_TIMEOUT_MS = 5000;
 const STREAM_PLAY_TIMEOUT_MS = 7000;
 const VU_METER_TARGET_FPS = 24;
@@ -885,13 +903,17 @@ const AUDIO_FILE_EXTENSIONS = new Set([
   'wma',
 ]);
 
+function getPathParts(relativePath: string) {
+  return relativePath.split('/').filter(Boolean);
+}
+
 function getFilePathParts(file: File) {
   const relativePath =
     'webkitRelativePath' in file && file.webkitRelativePath
       ? file.webkitRelativePath
       : file.name;
 
-  return relativePath.split('/').filter(Boolean);
+  return getPathParts(relativePath);
 }
 
 function isIgnoredLocalFile(file: File) {
@@ -917,6 +939,20 @@ function isSupportedLocalAudioFile(file: File) {
   }
 
   return file.type.startsWith('audio/') || hasSupportedAudioExtension(file);
+}
+
+function buildLiveDirectoryTrackFromFile(file: File): LiveDirectoryTrack {
+  const relativePath =
+    'webkitRelativePath' in file && file.webkitRelativePath
+      ? file.webkitRelativePath
+      : file.name;
+
+  return {
+    name: file.name,
+    relativePath,
+    sourceUrl: URL.createObjectURL(file),
+    revokeOnClear: true,
+  };
 }
 
 async function resolveStreamUrl(sourceUrl: string) {
@@ -1677,7 +1713,7 @@ function App() {
   >('idle');
   const [liveRadioCurrentSong, setLiveRadioCurrentSong] =
     useState<LautFmCurrentSong | null>(null);
-  const [liveDirectoryFiles, setLiveDirectoryFiles] = useState<File[]>([]);
+  const [liveDirectoryFiles, setLiveDirectoryFiles] = useState<LiveDirectoryTrack[]>([]);
   const [liveDirectoryName, setLiveDirectoryName] = useState('');
   const [liveDirectoryTrackLabel, setLiveDirectoryTrackLabel] = useState('');
   const [liveDirectorySelectionMessage, setLiveDirectorySelectionMessage] = useState('');
@@ -1716,7 +1752,6 @@ function App() {
   const [vuMeterReconnectToken, setVuMeterReconnectToken] = useState(0);
   const nativeVuMeterLastUpdateRef = useRef(0);
   const liveAudioStoppingRef = useRef(false);
-  const liveDirectoryObjectUrlsRef = useRef<string[]>([]);
   const liveDirectoryTrackIndexRef = useRef(0);
   const liveDirectoryPlaybackModeRef = useRef<LiveDirectoryPlaybackMode>('normal');
   const pendingLiveAutoplayRef = useRef<LiveAudioSource | null>(null);
@@ -2036,9 +2071,17 @@ function App() {
       activeAudio.onended = null;
       activeAudio.onerror = null;
       activeAudio.pause();
-      activeAudio.src = '';
-      activeAudio.load();
-      liveRadioAudioRef.current = null;
+      if (liveAudioSource === 'directory') {
+        try {
+          activeAudio.currentTime = 0;
+        } catch {
+          // Keep the current source attached on desktop WebKit to avoid transport crashes.
+        }
+      } else {
+        activeAudio.src = '';
+        activeAudio.load();
+        liveRadioAudioRef.current = null;
+      }
     }
 
     setLiveRadioPlaybackState('idle');
@@ -2088,10 +2131,11 @@ function App() {
   };
 
   const clearLiveDirectoryObjectUrls = () => {
-    liveDirectoryObjectUrlsRef.current.forEach((objectUrl) => {
-      URL.revokeObjectURL(objectUrl);
+    liveDirectoryFiles.forEach((track) => {
+      if (track.revokeOnClear) {
+        URL.revokeObjectURL(track.sourceUrl);
+      }
     });
-    liveDirectoryObjectUrlsRef.current = [];
     liveDirectoryTrackIndexRef.current = 0;
   };
 
@@ -2329,7 +2373,7 @@ function App() {
 
     try {
       const selectedTrack = liveDirectoryFiles[trackIndex];
-      if (!selectedTrack || !isSupportedLocalAudioFile(selectedTrack)) {
+      if (!selectedTrack) {
         const nextIndex = getNextDirectoryTrackIndex(
           trackIndex,
           'next',
@@ -2344,10 +2388,6 @@ function App() {
         return;
       }
 
-      const objectUrl =
-        liveDirectoryObjectUrlsRef.current[trackIndex] ??
-        URL.createObjectURL(selectedTrack);
-      liveDirectoryObjectUrlsRef.current[trackIndex] = objectUrl;
       liveDirectoryTrackIndexRef.current = trackIndex;
 
       const audio = liveRadioAudioRef.current ?? liveAudioElementRef.current ?? new Audio();
@@ -2355,7 +2395,7 @@ function App() {
       logDesktopMediaDebug('playLiveDirectoryTrack:prepare', {
         trackIndex,
         fileName: selectedTrack.name,
-        objectUrl,
+        sourceUrl: selectedTrack.sourceUrl,
         reusingAudioElement: audio === liveAudioElementRef.current,
         snapshotBefore: buildAudioDebugSnapshot(audio),
       });
@@ -2367,8 +2407,8 @@ function App() {
         audio.crossOrigin = 'anonymous';
       }
 
-      if (audio.src !== objectUrl) {
-        audio.src = objectUrl;
+      if (audio.src !== selectedTrack.sourceUrl) {
+        audio.src = selectedTrack.sourceUrl;
       }
       audio.currentTime = 0;
 
@@ -2451,17 +2491,9 @@ function App() {
 
     const selectedFiles = receivedFiles
       .filter(isSupportedLocalAudioFile)
+      .map(buildLiveDirectoryTrackFromFile)
       .sort((left, right) => {
-        const leftPath =
-          'webkitRelativePath' in left && left.webkitRelativePath
-            ? left.webkitRelativePath
-            : left.name;
-        const rightPath =
-          'webkitRelativePath' in right && right.webkitRelativePath
-            ? right.webkitRelativePath
-            : right.name;
-
-        return leftPath.localeCompare(rightPath, undefined, {
+        return left.relativePath.localeCompare(right.relativePath, undefined, {
           numeric: true,
           sensitivity: 'base',
         });
@@ -2489,14 +2521,69 @@ function App() {
     setLiveDirectorySelectionMessage('');
     pendingLiveAutoplayRef.current = 'directory';
     const firstFile = selectedFiles[0];
-    const relativePath =
-      'webkitRelativePath' in firstFile ? firstFile.webkitRelativePath : '';
-    const [directoryName] = relativePath.split('/');
+    const [directoryName] = getPathParts(firstFile.relativePath);
     setLiveDirectoryName(directoryName || 'Musique disque dur');
+  };
+
+  const handleNativeLiveDirectoryBrowse = async () => {
+    try {
+      const coreApi = await import('@tauri-apps/api/core');
+      if (!coreApi.isTauri()) {
+        return;
+      }
+
+      const selection = await coreApi.invoke<NativeDirectorySelectionPayload | null>(
+        'pick_audio_directory',
+      );
+
+      if (!selection) {
+        return;
+      }
+
+      clearLiveDirectoryObjectUrls();
+      stopLiveRadioPlayback();
+
+      const selectedTracks = selection.tracks
+        .map((track) => ({
+          name: track.name,
+          relativePath: track.relativePath,
+          sourceUrl: coreApi.convertFileSrc(track.path),
+        }))
+        .sort((left, right) =>
+          left.relativePath.localeCompare(right.relativePath, undefined, {
+            numeric: true,
+            sensitivity: 'base',
+          }),
+        );
+
+      setLiveDirectoryFiles(selectedTracks);
+      setLiveDirectoryTrackLabel('');
+
+      if (selectedTracks.length === 0) {
+        setLiveDirectorySelectionMessage(
+          'Dossier charge, mais aucun fichier audio compatible n a ete trouve.',
+        );
+        pendingLiveAutoplayRef.current = null;
+        setLiveDirectoryName(selection.directoryName || '');
+        return;
+      }
+
+      setLiveDirectorySelectionMessage('');
+      pendingLiveAutoplayRef.current = 'directory';
+      setLiveDirectoryName(selection.directoryName || 'Musique disque dur');
+    } catch {
+      setLiveDirectorySelectionMessage(
+        'Le selecteur de dossier natif est indisponible sur cette plateforme.',
+      );
+    }
   };
 
   const handleBrowseLiveAudio = () => {
     if (liveAudioSource === 'directory') {
+      if (isTauriApp) {
+        void handleNativeLiveDirectoryBrowse();
+        return;
+      }
       if (liveDirectoryInputRef.current) {
         liveDirectoryInputRef.current.value = '';
         liveDirectoryInputRef.current.click();
@@ -2700,9 +2787,13 @@ function App() {
 
   useEffect(() => {
     return () => {
-      clearLiveDirectoryObjectUrls();
+      liveDirectoryFiles.forEach((track) => {
+        if (track.revokeOnClear) {
+          URL.revokeObjectURL(track.sourceUrl);
+        }
+      });
     };
-  }, []);
+  }, [liveDirectoryFiles]);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;

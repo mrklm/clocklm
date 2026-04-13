@@ -1,6 +1,7 @@
 use serde::Serialize;
 use std::env;
 use std::io::Read;
+use std::path::Path;
 use std::process::{Child, ChildStdout, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -36,6 +37,89 @@ struct SystemVuMeterStatusPayload {
   active: bool,
   available: bool,
   reason: String,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct NativeDirectoryTrack {
+  name: String,
+  path: String,
+  relative_path: String,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct NativeDirectorySelectionPayload {
+  directory_name: String,
+  tracks: Vec<NativeDirectoryTrack>,
+}
+
+fn is_supported_audio_path(path: &Path) -> bool {
+  matches!(
+    path
+      .extension()
+      .and_then(|extension| extension.to_str())
+      .map(|extension| extension.to_ascii_lowercase())
+      .as_deref(),
+    Some("aac")
+      | Some("aif")
+      | Some("aiff")
+      | Some("alac")
+      | Some("flac")
+      | Some("m4a")
+      | Some("mp3")
+      | Some("ogg")
+      | Some("oga")
+      | Some("opus")
+      | Some("wav")
+      | Some("webm")
+      | Some("wma")
+  )
+}
+
+fn browse_audio_directory() -> Result<Option<NativeDirectorySelectionPayload>, String> {
+  let Some(directory_path) = rfd::FileDialog::new().pick_folder() else {
+    return Ok(None);
+  };
+
+  let directory_name = directory_path
+    .file_name()
+    .and_then(|name| name.to_str())
+    .map(str::to_string)
+    .unwrap_or_else(|| "Musique disque dur".to_string());
+
+  let mut tracks = walkdir::WalkDir::new(&directory_path)
+    .into_iter()
+    .filter_map(Result::ok)
+    .filter(|entry| entry.file_type().is_file() && is_supported_audio_path(entry.path()))
+    .filter_map(|entry| {
+      let absolute_path = entry.path().to_path_buf();
+      let relative_path = absolute_path
+        .strip_prefix(&directory_path)
+        .ok()?
+        .to_string_lossy()
+        .replace('\\', "/");
+      let name = absolute_path.file_name()?.to_string_lossy().to_string();
+
+      Some(NativeDirectoryTrack {
+        name,
+        path: absolute_path.to_string_lossy().to_string(),
+        relative_path,
+      })
+    })
+    .collect::<Vec<_>>();
+
+  tracks.sort_by(|left, right| {
+    left
+      .relative_path
+      .to_ascii_lowercase()
+      .cmp(&right.relative_path.to_ascii_lowercase())
+  });
+
+  Ok(Some(NativeDirectorySelectionPayload {
+    directory_name,
+    tracks,
+  }))
 }
 
 fn now_millis() -> u64 {
@@ -223,6 +307,11 @@ fn configure_linux_media_runtime() {
 }
 
 #[tauri::command]
+fn pick_audio_directory() -> Result<Option<NativeDirectorySelectionPayload>, String> {
+  browse_audio_directory()
+}
+
+#[tauri::command]
 fn start_system_vu_meter(
   app: AppHandle,
   runtime: State<'_, SystemVuMeterRuntime>,
@@ -279,6 +368,7 @@ pub fn run() {
   tauri::Builder::default()
     .manage(SystemVuMeterRuntime::default())
     .invoke_handler(tauri::generate_handler![
+      pick_audio_directory,
       start_system_vu_meter,
       stop_system_vu_meter
     ])
