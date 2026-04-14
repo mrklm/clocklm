@@ -1737,6 +1737,7 @@ function App() {
   const liveAudioElementRef = useRef<HTMLAudioElement | null>(null);
   const liveRadioAudioRef = useRef<HTMLAudioElement | null>(null);
   const liveDirectoryInputRef = useRef<HTMLInputElement | null>(null);
+  const liveDirectoryFilesRef = useRef<LiveDirectoryTrack[]>([]);
   const vuMeterAudioContextRef = useRef<AudioContext | null>(null);
   const vuMeterLeftAnalyserRef = useRef<AnalyserNode | null>(null);
   const vuMeterRightAnalyserRef = useRef<AnalyserNode | null>(null);
@@ -1994,6 +1995,10 @@ function App() {
     isTauriApp
     && typeof window !== 'undefined'
     && /\bLinux\b/i.test(window.navigator.userAgent);
+  const isMacDesktopTauri =
+    isTauriApp
+    && typeof window !== 'undefined'
+    && /\bMacintosh\b|\bMac OS X\b/i.test(window.navigator.userAgent);
   const activeVuMeterLevels = shouldPreferNativeVuMeter ? nativeVuMeterLevels : vuMeterLevels;
   const activeVuMeterWaveform = shouldPreferNativeVuMeter
     ? nativeVuMeterWaveform
@@ -2131,11 +2136,12 @@ function App() {
   };
 
   const clearLiveDirectoryObjectUrls = () => {
-    liveDirectoryFiles.forEach((track) => {
+    liveDirectoryFilesRef.current.forEach((track) => {
       if (track.revokeOnClear) {
         URL.revokeObjectURL(track.sourceUrl);
       }
     });
+    liveDirectoryFilesRef.current = [];
     liveDirectoryTrackIndexRef.current = 0;
   };
 
@@ -2335,7 +2341,9 @@ function App() {
   };
 
   const playLiveDirectoryTrack = async (trackIndex = 0) => {
-    if (liveDirectoryFiles.length === 0) {
+    const availableTracks = liveDirectoryFilesRef.current;
+
+    if (availableTracks.length === 0) {
       setLiveRadioPlaybackState('error');
       return;
     }
@@ -2372,7 +2380,7 @@ function App() {
     stopAlarmPlayback();
 
     try {
-      const selectedTrack = liveDirectoryFiles[trackIndex];
+      const selectedTrack = availableTracks[trackIndex];
       if (!selectedTrack) {
         const nextIndex = getNextDirectoryTrackIndex(
           trackIndex,
@@ -2483,6 +2491,26 @@ function App() {
     setLiveRadioPlaybackState('paused');
   };
 
+  const applyLiveDirectorySelection = (selectedTracks: LiveDirectoryTrack[], directoryName: string) => {
+    liveDirectoryFilesRef.current = selectedTracks;
+    setLiveDirectoryFiles(selectedTracks);
+    setLiveDirectoryTrackLabel('');
+
+    if (selectedTracks.length === 0) {
+      setLiveDirectorySelectionMessage(
+        'Dossier charge, mais aucun fichier audio compatible n a ete trouve.',
+      );
+      pendingLiveAutoplayRef.current = null;
+      setLiveDirectoryName(directoryName);
+      return;
+    }
+
+    setLiveDirectorySelectionMessage('');
+    pendingLiveAutoplayRef.current = null;
+    setLiveDirectoryName(directoryName || 'Musique disque dur');
+    void playLiveDirectoryTrack(0);
+  };
+
   const handleLiveDirectorySelection = (files: FileList | null) => {
     clearLiveDirectoryObjectUrls();
     stopLiveRadioPlayback();
@@ -2499,30 +2527,18 @@ function App() {
         });
       });
 
-    setLiveDirectoryFiles(selectedFiles);
-    setLiveDirectoryTrackLabel('');
-
     if (receivedFiles.length === 0) {
       setLiveDirectorySelectionMessage('Aucun dossier selectionne.');
       pendingLiveAutoplayRef.current = null;
+      liveDirectoryFilesRef.current = [];
+      setLiveDirectoryFiles([]);
       setLiveDirectoryName('');
       return;
     }
 
-    if (selectedFiles.length === 0) {
-      setLiveDirectorySelectionMessage(
-        'Dossier charge, mais aucun fichier audio compatible n a ete trouve.',
-      );
-      pendingLiveAutoplayRef.current = null;
-      setLiveDirectoryName('');
-      return;
-    }
-
-    setLiveDirectorySelectionMessage('');
-    pendingLiveAutoplayRef.current = 'directory';
     const firstFile = selectedFiles[0];
     const [directoryName] = getPathParts(firstFile.relativePath);
-    setLiveDirectoryName(directoryName || 'Musique disque dur');
+    applyLiveDirectorySelection(selectedFiles, directoryName || 'Musique disque dur');
   };
 
   const handleNativeLiveDirectoryBrowse = async () => {
@@ -2556,21 +2572,7 @@ function App() {
           }),
         );
 
-      setLiveDirectoryFiles(selectedTracks);
-      setLiveDirectoryTrackLabel('');
-
-      if (selectedTracks.length === 0) {
-        setLiveDirectorySelectionMessage(
-          'Dossier charge, mais aucun fichier audio compatible n a ete trouve.',
-        );
-        pendingLiveAutoplayRef.current = null;
-        setLiveDirectoryName(selection.directoryName || '');
-        return;
-      }
-
-      setLiveDirectorySelectionMessage('');
-      pendingLiveAutoplayRef.current = 'directory';
-      setLiveDirectoryName(selection.directoryName || 'Musique disque dur');
+      applyLiveDirectorySelection(selectedTracks, selection.directoryName || 'Musique disque dur');
     } catch {
       setLiveDirectorySelectionMessage(
         'Le selecteur de dossier natif est indisponible sur cette plateforme.',
@@ -2733,19 +2735,6 @@ function App() {
 
   useEffect(() => {
     if (
-      liveAudioSource !== 'directory'
-      || pendingLiveAutoplayRef.current !== 'directory'
-      || liveDirectoryFiles.length === 0
-    ) {
-      return;
-    }
-
-    pendingLiveAutoplayRef.current = null;
-    void playLiveDirectoryTrack(0);
-  }, [liveAudioSource, liveDirectoryFiles]);
-
-  useEffect(() => {
-    if (
       liveAudioSource !== 'radio'
       || liveRadioPlaybackState !== 'playing'
       || !supportsStationCurrentSong(selectedLiveRadioStation)
@@ -2796,6 +2785,45 @@ function App() {
   }, [liveDirectoryFiles]);
 
   useEffect(() => {
+    liveDirectoryFilesRef.current = liveDirectoryFiles;
+  }, [liveDirectoryFiles]);
+
+  useEffect(() => {
+    let stopped = false;
+
+    void Promise.all([
+      import('@tauri-apps/api/core'),
+    ]).then(async ([coreApi]) => {
+      if (!coreApi.isTauri() || !isLinuxDesktopTauri) {
+        return;
+      }
+
+      if (vuMeterEnabled) {
+        await coreApi.invoke('start_system_vu_meter').catch(() => undefined);
+        return;
+      }
+
+      await coreApi.invoke('stop_system_vu_meter').catch(() => undefined);
+    }).catch(() => undefined);
+
+    return () => {
+      if (stopped) {
+        return;
+      }
+      stopped = true;
+      void Promise.all([
+        import('@tauri-apps/api/core'),
+      ]).then(async ([coreApi]) => {
+        if (!coreApi.isTauri() || !isLinuxDesktopTauri) {
+          return;
+        }
+
+        await coreApi.invoke('stop_system_vu_meter').catch(() => undefined);
+      }).catch(() => undefined);
+    };
+  }, [isLinuxDesktopTauri, vuMeterEnabled]);
+
+  useEffect(() => {
     let unlisten: (() => void) | undefined;
 
     void Promise.all([
@@ -2832,6 +2860,7 @@ function App() {
       || !activeAudio
       || liveRadioPlaybackState !== 'playing'
       || isLinuxDesktopTauri
+      || isMacDesktopTauri
     ) {
       if (vuMeterFrameRef.current !== null) {
         window.cancelAnimationFrame(vuMeterFrameRef.current);
@@ -2857,6 +2886,7 @@ function App() {
         hasActiveAudio: Boolean(activeAudio),
         playbackState: liveRadioPlaybackState,
         isLinuxDesktopTauri,
+        isMacDesktopTauri,
       });
       return;
     }
@@ -3079,7 +3109,14 @@ function App() {
         snapshot: buildAudioDebugSnapshot(activeAudio),
       });
     };
-  }, [isLinuxDesktopTauri, liveRadioPlaybackState, vuMeterEnabled, vuMeterStyle, vuMeterReconnectToken]);
+  }, [
+    isLinuxDesktopTauri,
+    isMacDesktopTauri,
+    liveRadioPlaybackState,
+    vuMeterEnabled,
+    vuMeterStyle,
+    vuMeterReconnectToken,
+  ]);
 
   useEffect(() => {
     void Promise.all([
