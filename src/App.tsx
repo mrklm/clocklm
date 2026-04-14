@@ -252,6 +252,29 @@ function buildVuMeterColumns(values: Uint8Array, columns = 16) {
   });
 }
 
+function getMediaCaptureStream(
+  media: HTMLMediaElement,
+): MediaStream | null {
+  const mediaWithCapture = media as HTMLMediaElement & {
+    captureStream?: () => MediaStream;
+    mozCaptureStream?: () => MediaStream;
+  };
+
+  try {
+    if (typeof mediaWithCapture.captureStream === 'function') {
+      return mediaWithCapture.captureStream();
+    }
+
+    if (typeof mediaWithCapture.mozCaptureStream === 'function') {
+      return mediaWithCapture.mozCaptureStream();
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
 function VuMeter({
   enabled,
   mode,
@@ -2004,6 +2027,7 @@ function App() {
     isTauriApp
     && typeof window !== 'undefined'
     && /\bMacintosh\b|\bMac OS X\b/i.test(window.navigator.userAgent);
+  const shouldDisableWebAudioVuMeter = isLinuxDesktopTauri && shouldPreferNativeVuMeter;
   const activeVuMeterLevels = shouldPreferNativeVuMeter ? nativeVuMeterLevels : vuMeterLevels;
   const activeVuMeterWaveform = shouldPreferNativeVuMeter
     ? nativeVuMeterWaveform
@@ -2329,7 +2353,7 @@ function App() {
       const audioElement = liveAudioElementRef.current;
       const audio = await playAudioFromCandidates(candidateUrls, {
         preload: 'none',
-        preferCrossOrigin: !isTauriApp,
+        preferCrossOrigin: true,
         audioElement,
       });
       liveRadioAudioRef.current = audio;
@@ -2596,7 +2620,7 @@ function App() {
           relativePath: track.relativePath,
           sourceUrl: coreApi.convertFileSrc(track.path),
           playbackUrl: undefined,
-          fetchBeforePlay: false,
+          fetchBeforePlay: true,
           revokeOnClear: false,
         }))
         .sort((left, right) =>
@@ -2616,13 +2640,14 @@ function App() {
 
   const handleBrowseLiveAudio = () => {
     if (liveAudioSource === 'directory') {
-      if (isTauriApp) {
-        void handleNativeLiveDirectoryBrowse();
-        return;
-      }
       if (liveDirectoryInputRef.current) {
         liveDirectoryInputRef.current.value = '';
         liveDirectoryInputRef.current.click();
+        return;
+      }
+
+      if (isTauriApp) {
+        void handleNativeLiveDirectoryBrowse();
       }
       return;
     }
@@ -2896,7 +2921,7 @@ function App() {
       !vuMeterEnabled
       || !activeAudio
       || liveRadioPlaybackState !== 'playing'
-      || isLinuxDesktopTauri
+      || shouldDisableWebAudioVuMeter
     ) {
       if (vuMeterFrameRef.current !== null) {
         window.cancelAnimationFrame(vuMeterFrameRef.current);
@@ -2917,7 +2942,7 @@ function App() {
         vuMeterEnabled,
         hasActiveAudio: Boolean(activeAudio),
         playbackState: liveRadioPlaybackState,
-        isLinuxDesktopTauri,
+        shouldDisableWebAudioVuMeter,
       });
       return;
     }
@@ -2984,29 +3009,43 @@ function App() {
         }
 
         if (shouldRebuildGraph) {
+          const captureStream = getMediaCaptureStream(activeAudio);
           const shouldUseSafeMacGraph = isMacDesktopTauri;
+          const useCapturedMediaStream = Boolean(captureStream);
           logDesktopMediaDebug('vu-meter:build-graph', {
-            strategy: shouldUseSafeMacGraph ? 'mediaElementSource:safe-mac' : 'mediaElementSource',
+            strategy: useCapturedMediaStream
+              ? 'captureStream'
+              : shouldUseSafeMacGraph
+                ? 'mediaElementSource:safe-mac'
+                : 'mediaElementSource',
             snapshot: buildAudioDebugSnapshot(activeAudio),
           });
 
           const source =
-            vuMeterSourceRef.current && vuMeterConnectedAudioRef.current === activeAudio
+            !useCapturedMediaStream
+            && vuMeterSourceRef.current
+            && vuMeterConnectedAudioRef.current === activeAudio
               ? vuMeterSourceRef.current
-              : audioContext.createMediaElementSource(activeAudio);
+              : useCapturedMediaStream && captureStream
+                ? audioContext.createMediaStreamSource(captureStream)
+                : audioContext.createMediaElementSource(activeAudio);
           const splitter = audioContext.createChannelSplitter(2);
           const leftAnalyser = audioContext.createAnalyser();
           const rightAnalyser = audioContext.createAnalyser();
-          const outputGain = audioContext.createGain();
+          const outputGain = useCapturedMediaStream ? null : audioContext.createGain();
           leftAnalyser.fftSize = 256;
           rightAnalyser.fftSize = 256;
           leftAnalyser.smoothingTimeConstant = 0.82;
           rightAnalyser.smoothingTimeConstant = 0.82;
-          outputGain.gain.value = 1;
+          if (outputGain) {
+            outputGain.gain.value = 1;
+          }
 
           source.connect(splitter);
-          source.connect(outputGain);
-          outputGain.connect(audioContext.destination);
+          if (outputGain) {
+            source.connect(outputGain);
+            outputGain.connect(audioContext.destination);
+          }
           splitter.connect(leftAnalyser, 0);
           splitter.connect(rightAnalyser, 1);
 
@@ -3139,9 +3178,9 @@ function App() {
       });
     };
   }, [
-    isLinuxDesktopTauri,
     isMacDesktopTauri,
     liveRadioPlaybackState,
+    shouldDisableWebAudioVuMeter,
     vuMeterEnabled,
     vuMeterStyle,
     vuMeterReconnectToken,
