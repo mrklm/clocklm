@@ -5,6 +5,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.57] - 2026-04-14
+
+### Modifié
+
+ - Correctifs lecture locale Linux et VU-metres macOS/desktop
+
 ## [1.0.56] - 2026-04-14
 
 ### Modifié
