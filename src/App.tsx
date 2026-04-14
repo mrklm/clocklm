@@ -95,6 +95,8 @@ type LiveDirectoryTrack = {
   name: string;
   relativePath: string;
   sourceUrl: string;
+  playbackUrl?: string;
+  fetchBeforePlay?: boolean;
   revokeOnClear?: boolean;
 };
 
@@ -951,6 +953,8 @@ function buildLiveDirectoryTrackFromFile(file: File): LiveDirectoryTrack {
     name: file.name,
     relativePath,
     sourceUrl: URL.createObjectURL(file),
+    playbackUrl: undefined,
+    fetchBeforePlay: false,
     revokeOnClear: true,
   };
 }
@@ -2137,6 +2141,9 @@ function App() {
 
   const clearLiveDirectoryObjectUrls = () => {
     liveDirectoryFilesRef.current.forEach((track) => {
+      if (track.playbackUrl && track.playbackUrl !== track.sourceUrl) {
+        URL.revokeObjectURL(track.playbackUrl);
+      }
       if (track.revokeOnClear) {
         URL.revokeObjectURL(track.sourceUrl);
       }
@@ -2400,10 +2407,12 @@ function App() {
 
       const audio = liveRadioAudioRef.current ?? liveAudioElementRef.current ?? new Audio();
       liveAudioStoppingRef.current = false;
+      const playbackUrl = await resolveLiveDirectoryPlaybackUrl(selectedTrack);
       logDesktopMediaDebug('playLiveDirectoryTrack:prepare', {
         trackIndex,
         fileName: selectedTrack.name,
         sourceUrl: selectedTrack.sourceUrl,
+        playbackUrl,
         reusingAudioElement: audio === liveAudioElementRef.current,
         snapshotBefore: buildAudioDebugSnapshot(audio),
       });
@@ -2415,10 +2424,11 @@ function App() {
         audio.crossOrigin = 'anonymous';
       }
 
-      if (audio.src !== selectedTrack.sourceUrl) {
-        audio.src = selectedTrack.sourceUrl;
+      if (audio.src !== playbackUrl) {
+        audio.src = playbackUrl;
       }
       audio.currentTime = 0;
+      audio.load();
 
       audio.preload = 'auto';
       audio.onended = () => {
@@ -2511,6 +2521,26 @@ function App() {
     void playLiveDirectoryTrack(0);
   };
 
+  const resolveLiveDirectoryPlaybackUrl = async (track: LiveDirectoryTrack) => {
+    if (track.playbackUrl) {
+      return track.playbackUrl;
+    }
+
+    if (!track.fetchBeforePlay) {
+      track.playbackUrl = track.sourceUrl;
+      return track.playbackUrl;
+    }
+
+    const response = await fetch(track.sourceUrl);
+    if (!response.ok) {
+      throw new Error(`audio_asset_fetch_failed:${response.status}`);
+    }
+
+    const audioBlob = await response.blob();
+    track.playbackUrl = URL.createObjectURL(audioBlob);
+    return track.playbackUrl;
+  };
+
   const handleLiveDirectorySelection = (files: FileList | null) => {
     clearLiveDirectoryObjectUrls();
     stopLiveRadioPlayback();
@@ -2564,6 +2594,9 @@ function App() {
           name: track.name,
           relativePath: track.relativePath,
           sourceUrl: coreApi.convertFileSrc(track.path),
+          playbackUrl: undefined,
+          fetchBeforePlay: true,
+          revokeOnClear: false,
         }))
         .sort((left, right) =>
           left.relativePath.localeCompare(right.relativePath, undefined, {
@@ -2777,6 +2810,9 @@ function App() {
   useEffect(() => {
     return () => {
       liveDirectoryFiles.forEach((track) => {
+        if (track.playbackUrl && track.playbackUrl !== track.sourceUrl) {
+          URL.revokeObjectURL(track.playbackUrl);
+        }
         if (track.revokeOnClear) {
           URL.revokeObjectURL(track.sourceUrl);
         }
@@ -2860,7 +2896,6 @@ function App() {
       || !activeAudio
       || liveRadioPlaybackState !== 'playing'
       || isLinuxDesktopTauri
-      || isMacDesktopTauri
     ) {
       if (vuMeterFrameRef.current !== null) {
         window.cancelAnimationFrame(vuMeterFrameRef.current);
@@ -2886,7 +2921,6 @@ function App() {
         hasActiveAudio: Boolean(activeAudio),
         playbackState: liveRadioPlaybackState,
         isLinuxDesktopTauri,
-        isMacDesktopTauri,
       });
       return;
     }
@@ -2948,25 +2982,13 @@ function App() {
         }
 
         if (shouldRebuildGraph) {
-          type CaptureCapableAudio = HTMLAudioElement & {
-            captureStream?: () => MediaStream;
-            mozCaptureStream?: () => MediaStream;
-          };
-
-          const captureAudio = activeAudio as CaptureCapableAudio;
-          const capturedStreamCandidate =
-            captureAudio.captureStream?.()
-            ?? captureAudio.mozCaptureStream?.()
-            ?? null;
-          const capturedStream = capturedStreamCandidate;
+          const shouldUseSafeMacGraph = isMacDesktopTauri;
           logDesktopMediaDebug('vu-meter:build-graph', {
-            strategy: capturedStream ? 'captureStream' : 'mediaElementSource',
+            strategy: shouldUseSafeMacGraph ? 'mediaElementSource:safe-mac' : 'mediaElementSource',
             snapshot: buildAudioDebugSnapshot(activeAudio),
           });
 
-          const source = capturedStream
-            ? audioContext.createMediaStreamSource(capturedStream)
-            : audioContext.createMediaElementSource(activeAudio);
+          const source = audioContext.createMediaElementSource(activeAudio);
 
           const splitter = audioContext.createChannelSplitter(2);
           const leftAnalyser = audioContext.createAnalyser();
@@ -2979,9 +3001,6 @@ function App() {
           source.connect(splitter);
           splitter.connect(leftAnalyser, 0);
           splitter.connect(rightAnalyser, 1);
-          if (!capturedStream) {
-            source.connect(audioContext.destination);
-          }
 
           vuMeterSourceRef.current = source;
           vuMeterChannelSplitterRef.current = splitter;
@@ -3035,6 +3054,7 @@ function App() {
 
           if (
             monoLevel < 0.006
+            && !isMacDesktopTauri
             && !activeAudio.paused
             && !activeAudio.ended
             && activeAudio.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA

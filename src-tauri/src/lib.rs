@@ -168,10 +168,21 @@ fn resolve_pipewire_monitor_target() -> Result<String, String> {
   }
 
   let stdout = String::from_utf8_lossy(&output.stdout);
-  let target = stdout
+  let mut monitor_targets = stdout
     .lines()
-    .find_map(|line| line.trim().strip_suffix(":monitor_FL"))
-    .map(str::to_string);
+    .filter_map(|line| line.trim().strip_suffix(":monitor_FL"))
+    .filter(|target| !target.starts_with("pw-record"))
+    .collect::<Vec<_>>();
+
+  monitor_targets.sort_by_key(|target| {
+    if target.starts_with("alsa_output.") {
+      0
+    } else {
+      1
+    }
+  });
+
+  let target = monitor_targets.first().map(|target| (*target).to_string());
 
   target.ok_or_else(|| "PipeWire monitor output not found".to_string())
 }
