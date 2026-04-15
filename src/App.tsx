@@ -2027,6 +2027,10 @@ function App() {
     isTauriApp
     && typeof window !== 'undefined'
     && /\bMacintosh\b|\bMac OS X\b/i.test(window.navigator.userAgent);
+  const isWindowsDesktopTauri =
+    isTauriApp
+    && typeof window !== 'undefined'
+    && /\bWindows\b|\bWin32\b|\bWin64\b/i.test(window.navigator.userAgent);
   const shouldDisableWebAudioVuMeter = isLinuxDesktopTauri && shouldPreferNativeVuMeter;
   const activeVuMeterLevels = shouldPreferNativeVuMeter ? nativeVuMeterLevels : vuMeterLevels;
   const activeVuMeterWaveform = shouldPreferNativeVuMeter
@@ -2552,6 +2556,11 @@ function App() {
     }
 
     if (!track.fetchBeforePlay) {
+      track.playbackUrl = track.sourceUrl;
+      return track.playbackUrl;
+    }
+
+    if (isWindowsDesktopTauri) {
       track.playbackUrl = track.sourceUrl;
       return track.playbackUrl;
     }

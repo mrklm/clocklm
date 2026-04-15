@@ -5,6 +5,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.61] - 2026-04-15
+
+### Modifié
+
+ - Ajustement lecture locale Tauri pour Windows
+
 ## [1.0.60] - 2026-04-15
 
 ### Modifié
