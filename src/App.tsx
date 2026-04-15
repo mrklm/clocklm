@@ -2027,7 +2027,7 @@ function App() {
     isTauriApp
     && typeof window !== 'undefined'
     && /\bMacintosh\b|\bMac OS X\b/i.test(window.navigator.userAgent);
-  const shouldDisableWebAudioVuMeter = isLinuxDesktopTauri && shouldPreferNativeVuMeter;
+  const shouldDisableWebAudioVuMeter = isLinuxDesktopTauri;
   const activeVuMeterLevels = shouldPreferNativeVuMeter ? nativeVuMeterLevels : vuMeterLevels;
   const activeVuMeterWaveform = shouldPreferNativeVuMeter
     ? nativeVuMeterWaveform
@@ -2600,7 +2600,7 @@ function App() {
     try {
       const coreApi = await import('@tauri-apps/api/core');
       if (!coreApi.isTauri()) {
-        return;
+        return false;
       }
 
       const selection = await coreApi.invoke<NativeDirectorySelectionPayload | null>(
@@ -2608,7 +2608,7 @@ function App() {
       );
 
       if (!selection) {
-        return;
+        return true;
       }
 
       clearLiveDirectoryObjectUrls();
@@ -2620,7 +2620,7 @@ function App() {
           relativePath: track.relativePath,
           sourceUrl: coreApi.convertFileSrc(track.path),
           playbackUrl: undefined,
-          fetchBeforePlay: true,
+          fetchBeforePlay: false,
           revokeOnClear: false,
         }))
         .sort((left, right) =>
@@ -2631,23 +2631,33 @@ function App() {
         );
 
       applyLiveDirectorySelection(selectedTracks, selection.directoryName || 'Musique disque dur');
+      return true;
     } catch {
       setLiveDirectorySelectionMessage(
         'Le selecteur de dossier natif est indisponible sur cette plateforme.',
       );
+      return false;
     }
   };
 
   const handleBrowseLiveAudio = () => {
     if (liveAudioSource === 'directory') {
+      if (isTauriApp) {
+        void handleNativeLiveDirectoryBrowse().then((usedNativePicker) => {
+          if (usedNativePicker || !liveDirectoryInputRef.current) {
+            return;
+          }
+
+          liveDirectoryInputRef.current.value = '';
+          liveDirectoryInputRef.current.click();
+        });
+        return;
+      }
+
       if (liveDirectoryInputRef.current) {
         liveDirectoryInputRef.current.value = '';
         liveDirectoryInputRef.current.click();
         return;
-      }
-
-      if (isTauriApp) {
-        void handleNativeLiveDirectoryBrowse();
       }
       return;
     }
