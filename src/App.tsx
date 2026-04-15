@@ -100,6 +100,10 @@ type LiveDirectoryTrack = {
   revokeOnClear?: boolean;
 };
 
+function normalizeNativeAudioTrackPath(path: string) {
+  return path.replace(/\\/g, '/');
+}
+
 const STREAM_FETCH_TIMEOUT_MS = 5000;
 const STREAM_PLAY_TIMEOUT_MS = 7000;
 const VU_METER_TARGET_FPS = 24;
@@ -2629,7 +2633,7 @@ function App() {
         .map((track) => ({
           name: track.name,
           relativePath: track.relativePath,
-          sourceUrl: coreApi.convertFileSrc(track.path),
+          sourceUrl: coreApi.convertFileSrc(normalizeNativeAudioTrackPath(track.path)),
           playbackUrl: undefined,
           fetchBeforePlay: true,
           revokeOnClear: false,
