@@ -77,6 +77,25 @@ fn is_supported_audio_path(path: &Path) -> bool {
   )
 }
 
+fn is_ignored_audio_path(path: &Path) -> bool {
+  let file_name = path
+    .file_name()
+    .and_then(|name| name.to_str())
+    .unwrap_or_default();
+
+  if matches!(file_name, ".DS_Store" | "Thumbs.db") || file_name.starts_with("._") {
+    return true;
+  }
+
+  path.components().any(|component| {
+    component
+      .as_os_str()
+      .to_str()
+      .map(|value| value == "__MACOSX")
+      .unwrap_or(false)
+  })
+}
+
 fn browse_audio_directory() -> Result<Option<NativeDirectorySelectionPayload>, String> {
   let Some(directory_path) = rfd::FileDialog::new().pick_folder() else {
     return Ok(None);
@@ -91,7 +110,11 @@ fn browse_audio_directory() -> Result<Option<NativeDirectorySelectionPayload>, S
   let mut tracks = walkdir::WalkDir::new(&directory_path)
     .into_iter()
     .filter_map(Result::ok)
-    .filter(|entry| entry.file_type().is_file() && is_supported_audio_path(entry.path()))
+    .filter(|entry| {
+      entry.file_type().is_file()
+        && !is_ignored_audio_path(entry.path())
+        && is_supported_audio_path(entry.path())
+    })
     .filter_map(|entry| {
       let absolute_path = entry.path().to_path_buf();
       let relative_path = absolute_path

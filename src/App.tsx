@@ -2027,7 +2027,7 @@ function App() {
     isTauriApp
     && typeof window !== 'undefined'
     && /\bMacintosh\b|\bMac OS X\b/i.test(window.navigator.userAgent);
-  const shouldDisableWebAudioVuMeter = isLinuxDesktopTauri;
+  const shouldDisableWebAudioVuMeter = isLinuxDesktopTauri && shouldPreferNativeVuMeter;
   const activeVuMeterLevels = shouldPreferNativeVuMeter ? nativeVuMeterLevels : vuMeterLevels;
   const activeVuMeterWaveform = shouldPreferNativeVuMeter
     ? nativeVuMeterWaveform
@@ -2620,7 +2620,7 @@ function App() {
           relativePath: track.relativePath,
           sourceUrl: coreApi.convertFileSrc(track.path),
           playbackUrl: undefined,
-          fetchBeforePlay: false,
+          fetchBeforePlay: true,
           revokeOnClear: false,
         }))
         .sort((left, right) =>
