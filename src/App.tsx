@@ -2109,7 +2109,7 @@ function App() {
       activeAudio.onended = null;
       activeAudio.onerror = null;
       activeAudio.pause();
-      if (liveAudioSource === 'directory') {
+      if (liveAudioSource === 'directory' && isMacDesktopTauri) {
         try {
           activeAudio.currentTime = 0;
         } catch {
@@ -2434,7 +2434,7 @@ function App() {
 
       liveDirectoryTrackIndexRef.current = trackIndex;
 
-      const audio = liveRadioAudioRef.current ?? liveAudioElementRef.current ?? new Audio();
+      const audio = liveAudioElementRef.current ?? liveRadioAudioRef.current ?? new Audio();
       liveAudioStoppingRef.current = false;
       const playbackUrl = await resolveLiveDirectoryPlaybackUrl(selectedTrack);
       logDesktopMediaDebug('playLiveDirectoryTrack:prepare', {
@@ -2451,6 +2451,8 @@ function App() {
       audio.preload = 'auto';
       if (!isTauriApp) {
         audio.crossOrigin = 'anonymous';
+      } else {
+        audio.removeAttribute('crossorigin');
       }
 
       if (audio.src !== playbackUrl) {
