@@ -2054,11 +2054,6 @@ function App() {
   const shouldUseExternalVuMeterWindow = false;
   const shouldShowClockDisplay = !vuMeterEnabled || vuMeterDisplay !== 'vu-meter';
   const shouldShowVuMeterDisplay = vuMeterEnabled && vuMeterDisplay !== 'clock';
-  const nativeVuMeterIsFresh = Date.now() - nativeVuMeterLastUpdateRef.current < 2500;
-  const shouldPreferNativeVuMeter =
-    nativeVuMeterIsFresh
-    && nativeVuMeterLevels.length > 0
-    && liveRadioPlaybackState !== 'playing';
   const isLinuxDesktopTauri =
     isTauriApp
     && typeof window !== 'undefined'
@@ -2067,6 +2062,14 @@ function App() {
     isTauriApp
     && typeof window !== 'undefined'
     && /\bMacintosh\b|\bMac OS X\b/i.test(window.navigator.userAgent);
+  const shouldEnableLinuxNativeVuMeter = false;
+  const nativeVuMeterIsFresh = Date.now() - nativeVuMeterLastUpdateRef.current < 2500;
+  const shouldPreferNativeVuMeter =
+    shouldEnableLinuxNativeVuMeter
+    && isLinuxDesktopTauri
+    && nativeVuMeterIsFresh
+    && nativeVuMeterLevels.length > 0
+    && liveRadioPlaybackState !== 'playing';
   const shouldDisableWebAudioVuMeter = isLinuxDesktopTauri && shouldPreferNativeVuMeter;
   const activeVuMeterLevels = shouldPreferNativeVuMeter ? nativeVuMeterLevels : vuMeterLevels;
   const activeVuMeterWaveform = shouldPreferNativeVuMeter
@@ -2393,7 +2396,7 @@ function App() {
       const audioElement = liveAudioElementRef.current;
       const audio = await playAudioFromCandidates(candidateUrls, {
         preload: 'none',
-        preferCrossOrigin: true,
+        preferCrossOrigin: !isTauriApp,
         audioElement,
       });
       liveRadioAudioRef.current = audio;
@@ -2926,7 +2929,9 @@ function App() {
       }
 
       const shouldRunNativeSystemVuMeter =
-        vuMeterEnabled
+        shouldEnableLinuxNativeVuMeter
+        && liveAudioSource === 'directory'
+        && vuMeterEnabled
         && liveRadioPlaybackState !== 'playing';
 
       if (shouldRunNativeSystemVuMeter) {
@@ -2952,7 +2957,13 @@ function App() {
         await coreApi.invoke('stop_system_vu_meter').catch(() => undefined);
       }).catch(() => undefined);
     };
-  }, [isLinuxDesktopTauri, liveRadioPlaybackState, vuMeterEnabled]);
+  }, [
+    isLinuxDesktopTauri,
+    liveAudioSource,
+    liveRadioPlaybackState,
+    shouldEnableLinuxNativeVuMeter,
+    vuMeterEnabled,
+  ]);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;

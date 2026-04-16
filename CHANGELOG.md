@@ -5,6 +5,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.67] - 2026-04-16
+
+### Modifié
+
+ - Ajustement audio desktop Linux/macOS
+
 ## [1.0.66] - 2026-04-16
 
 ### Modifié
