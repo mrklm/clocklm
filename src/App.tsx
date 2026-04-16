@@ -1806,7 +1806,6 @@ function App() {
   const vuMeterLeftAnalyserRef = useRef<AnalyserNode | null>(null);
   const vuMeterRightAnalyserRef = useRef<AnalyserNode | null>(null);
   const vuMeterChannelSplitterRef = useRef<ChannelSplitterNode | null>(null);
-  const vuMeterOutputGainRef = useRef<GainNode | null>(null);
   const vuMeterSourceRef = useRef<AudioNode | null>(null);
   const vuMeterConnectedAudioRef = useRef<HTMLAudioElement | null>(null);
   const vuMeterFrameRef = useRef<number | null>(null);
@@ -2062,6 +2061,10 @@ function App() {
     isTauriApp
     && typeof window !== 'undefined'
     && /\bMacintosh\b|\bMac OS X\b/i.test(window.navigator.userAgent);
+  const isWindowsDesktopTauri =
+    isTauriApp
+    && typeof window !== 'undefined'
+    && /\bWindows\b|\bWin32\b|\bWin64\b/i.test(window.navigator.userAgent);
   const shouldEnableLinuxNativeVuMeter = false;
   const nativeVuMeterIsFresh = Date.now() - nativeVuMeterLastUpdateRef.current < 2500;
   const shouldPreferNativeVuMeter =
@@ -2396,7 +2399,7 @@ function App() {
       const audioElement = liveAudioElementRef.current;
       const audio = await playAudioFromCandidates(candidateUrls, {
         preload: 'none',
-        preferCrossOrigin: !isTauriApp,
+        preferCrossOrigin: true,
         audioElement,
       });
       liveRadioAudioRef.current = audio;
@@ -2601,7 +2604,7 @@ function App() {
       return track.playbackUrl;
     }
 
-    if (isTauriApp && track.nativePath) {
+    if (isWindowsDesktopTauri && track.nativePath) {
       const coreApi = await import('@tauri-apps/api/core');
       const audioBytes = await coreApi.invoke<number[]>('read_audio_file_bytes', {
         path: track.nativePath,
@@ -2678,7 +2681,7 @@ function App() {
           sourceUrl: coreApi.convertFileSrc(normalizeNativeAudioTrackPath(track.path)),
           nativePath: track.path,
           playbackUrl: undefined,
-          fetchBeforePlay: true,
+          fetchBeforePlay: isWindowsDesktopTauri,
           revokeOnClear: false,
         }))
         .sort((left, right) =>
@@ -3009,7 +3012,6 @@ function App() {
       }
       vuMeterSourceRef.current?.disconnect();
       vuMeterChannelSplitterRef.current?.disconnect();
-      vuMeterOutputGainRef.current?.disconnect();
       vuMeterLeftAnalyserRef.current?.disconnect();
       vuMeterRightAnalyserRef.current?.disconnect();
       vuMeterSmoothedLevelsRef.current = [];
@@ -3044,8 +3046,7 @@ function App() {
           || !vuMeterSourceRef.current
           || !vuMeterChannelSplitterRef.current
           || !vuMeterLeftAnalyserRef.current
-          || !vuMeterRightAnalyserRef.current
-          || !vuMeterOutputGainRef.current;
+          || !vuMeterRightAnalyserRef.current;
 
         if (shouldRebuildGraph) {
           if (vuMeterFrameRef.current !== null) {
@@ -3055,13 +3056,11 @@ function App() {
 
           vuMeterSourceRef.current?.disconnect();
           vuMeterChannelSplitterRef.current?.disconnect();
-          vuMeterOutputGainRef.current?.disconnect();
           vuMeterLeftAnalyserRef.current?.disconnect();
           vuMeterRightAnalyserRef.current?.disconnect();
           vuMeterChannelSplitterRef.current = null;
           vuMeterLeftAnalyserRef.current = null;
           vuMeterRightAnalyserRef.current = null;
-          vuMeterOutputGainRef.current = null;
 
           if (vuMeterConnectedAudioRef.current !== activeAudio) {
             vuMeterSourceRef.current = null;
@@ -3112,20 +3111,12 @@ function App() {
           const splitter = audioContext.createChannelSplitter(2);
           const leftAnalyser = audioContext.createAnalyser();
           const rightAnalyser = audioContext.createAnalyser();
-          const outputGain = useCapturedMediaStream ? null : audioContext.createGain();
           leftAnalyser.fftSize = 256;
           rightAnalyser.fftSize = 256;
           leftAnalyser.smoothingTimeConstant = 0.82;
           rightAnalyser.smoothingTimeConstant = 0.82;
-          if (outputGain) {
-            outputGain.gain.value = 1;
-          }
 
           source.connect(splitter);
-          if (outputGain) {
-            source.connect(outputGain);
-            outputGain.connect(audioContext.destination);
-          }
           splitter.connect(leftAnalyser, 0);
           splitter.connect(rightAnalyser, 1);
 
@@ -3133,7 +3124,6 @@ function App() {
           vuMeterChannelSplitterRef.current = splitter;
           vuMeterLeftAnalyserRef.current = leftAnalyser;
           vuMeterRightAnalyserRef.current = rightAnalyser;
-          vuMeterOutputGainRef.current = outputGain;
           vuMeterConnectedAudioRef.current = activeAudio;
           vuMeterGraphBuildVersionRef.current = vuMeterReconnectToken;
           vuMeterSmoothedLevelsRef.current = [];
