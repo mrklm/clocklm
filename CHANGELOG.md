@@ -5,6 +5,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.66] - 2026-04-16
+
+### Modifié
+
+ - Correctif build TypeScript
+
 ## [1.0.65] - 2026-04-16
 
 ### Modifié
