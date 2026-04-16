@@ -2055,7 +2055,10 @@ function App() {
   const shouldShowClockDisplay = !vuMeterEnabled || vuMeterDisplay !== 'vu-meter';
   const shouldShowVuMeterDisplay = vuMeterEnabled && vuMeterDisplay !== 'clock';
   const nativeVuMeterIsFresh = Date.now() - nativeVuMeterLastUpdateRef.current < 2500;
-  const shouldPreferNativeVuMeter = nativeVuMeterIsFresh && nativeVuMeterLevels.length > 0;
+  const shouldPreferNativeVuMeter =
+    nativeVuMeterIsFresh
+    && nativeVuMeterLevels.length > 0
+    && liveRadioPlaybackState !== 'playing';
   const isLinuxDesktopTauri =
     isTauriApp
     && typeof window !== 'undefined'
@@ -2599,7 +2602,7 @@ function App() {
       return track.playbackUrl;
     }
 
-    if (isWindowsDesktopTauri && track.nativePath) {
+    if (isTauriApp && track.nativePath) {
       const coreApi = await import('@tauri-apps/api/core');
       const audioBytes = await coreApi.invoke<number[]>('read_audio_file_bytes', {
         path: track.nativePath,
@@ -2926,7 +2929,11 @@ function App() {
         return;
       }
 
-      if (vuMeterEnabled) {
+      const shouldRunNativeSystemVuMeter =
+        vuMeterEnabled
+        && liveRadioPlaybackState !== 'playing';
+
+      if (shouldRunNativeSystemVuMeter) {
         await coreApi.invoke('start_system_vu_meter').catch(() => undefined);
         return;
       }
@@ -2949,7 +2956,7 @@ function App() {
         await coreApi.invoke('stop_system_vu_meter').catch(() => undefined);
       }).catch(() => undefined);
     };
-  }, [isLinuxDesktopTauri, vuMeterEnabled]);
+  }, [isLinuxDesktopTauri, liveRadioPlaybackState, vuMeterEnabled]);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
