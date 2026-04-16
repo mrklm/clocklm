@@ -95,6 +95,7 @@ type LiveDirectoryTrack = {
   name: string;
   relativePath: string;
   sourceUrl: string;
+  nativePath?: string;
   playbackUrl?: string;
   fetchBeforePlay?: boolean;
   revokeOnClear?: boolean;
@@ -102,6 +103,38 @@ type LiveDirectoryTrack = {
 
 function normalizeNativeAudioTrackPath(path: string) {
   return path.replace(/\\/g, '/');
+}
+
+function getAudioMimeType(fileName: string) {
+  const extension = fileName.trim().toLowerCase().split('.').pop() ?? '';
+
+  switch (extension) {
+    case 'aac':
+      return 'audio/aac';
+    case 'aif':
+    case 'aiff':
+      return 'audio/aiff';
+    case 'flac':
+      return 'audio/flac';
+    case 'm4a':
+    case 'alac':
+      return 'audio/mp4';
+    case 'mp3':
+      return 'audio/mpeg';
+    case 'ogg':
+    case 'oga':
+      return 'audio/ogg';
+    case 'opus':
+      return 'audio/ogg; codecs=opus';
+    case 'wav':
+      return 'audio/wav';
+    case 'webm':
+      return 'audio/webm';
+    case 'wma':
+      return 'audio/x-ms-wma';
+    default:
+      return 'audio/*';
+  }
 }
 
 const STREAM_FETCH_TIMEOUT_MS = 5000;
@@ -2566,8 +2599,15 @@ function App() {
       return track.playbackUrl;
     }
 
-    if (isWindowsDesktopTauri) {
-      track.playbackUrl = track.sourceUrl;
+    if (isWindowsDesktopTauri && track.nativePath) {
+      const coreApi = await import('@tauri-apps/api/core');
+      const audioBytes = await coreApi.invoke<number[]>('read_audio_file_bytes', {
+        path: track.nativePath,
+      });
+      const audioBlob = new Blob([Uint8Array.from(audioBytes)], {
+        type: getAudioMimeType(track.name),
+      });
+      track.playbackUrl = URL.createObjectURL(audioBlob);
       return track.playbackUrl;
     }
 
@@ -2634,6 +2674,7 @@ function App() {
           name: track.name,
           relativePath: track.relativePath,
           sourceUrl: coreApi.convertFileSrc(normalizeNativeAudioTrackPath(track.path)),
+          nativePath: track.path,
           playbackUrl: undefined,
           fetchBeforePlay: true,
           revokeOnClear: false,

@@ -5,6 +5,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.64] - 2026-04-16
+
+### Modifié
+
+ - Lecture audio locale Windows via chargement natif
+
 ## [1.0.63] - 2026-04-15
 
 ### Modifié

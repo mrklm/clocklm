@@ -1,5 +1,6 @@
 use serde::Serialize;
 use std::env;
+use std::fs;
 use std::io::Read;
 use std::path::Path;
 use std::process::{Child, ChildStdout, Command, Stdio};
@@ -346,6 +347,11 @@ fn pick_audio_directory() -> Result<Option<NativeDirectorySelectionPayload>, Str
 }
 
 #[tauri::command]
+fn read_audio_file_bytes(path: String) -> Result<Vec<u8>, String> {
+  fs::read(&path).map_err(|error| format!("Unable to read audio file: {error}"))
+}
+
+#[tauri::command]
 fn start_system_vu_meter(
   app: AppHandle,
   runtime: State<'_, SystemVuMeterRuntime>,
@@ -403,6 +409,7 @@ pub fn run() {
     .manage(SystemVuMeterRuntime::default())
     .invoke_handler(tauri::generate_handler![
       pick_audio_directory,
+      read_audio_file_bytes,
       start_system_vu_meter,
       stop_system_vu_meter
     ])
