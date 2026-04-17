@@ -1,15 +1,22 @@
 use serde::Serialize;
 use std::env;
 use std::fs;
+#[cfg(target_os = "linux")]
 use std::io::Read;
 use std::path::Path;
-use std::process::{Child, ChildStdout, Command, Stdio};
+#[cfg(target_os = "linux")]
+use std::process::{ChildStdout, Command, Stdio};
+use std::process::Child;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::thread::{self, JoinHandle};
+#[cfg(target_os = "linux")]
+use std::thread;
+use std::thread::JoinHandle;
+#[cfg(target_os = "linux")]
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, State};
 
+#[cfg(target_os = "linux")]
 const VU_METER_SYSTEM_EVENT: &str = "clocklm://vu-meter-system";
 const VU_METER_SYSTEM_STATUS_EVENT: &str = "clocklm://vu-meter-system-status";
 
@@ -24,6 +31,7 @@ struct SystemVuMeterCapture {
   worker: Option<JoinHandle<()>>,
 }
 
+#[cfg(target_os = "linux")]
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct NativeVuMeterPayload {
@@ -146,6 +154,7 @@ fn browse_audio_directory() -> Result<Option<NativeDirectorySelectionPayload>, S
   }))
 }
 
+#[cfg(target_os = "linux")]
 fn now_millis() -> u64 {
   SystemTime::now()
     .duration_since(UNIX_EPOCH)
@@ -169,6 +178,7 @@ fn emit_system_vu_status(
   )
 }
 
+#[cfg(target_os = "linux")]
 fn emit_system_vu_levels(app: &AppHandle, left: f32, right: f32) -> tauri::Result<()> {
   app.emit(
     VU_METER_SYSTEM_EVENT,
@@ -236,6 +246,7 @@ fn build_pipewire_child(target: &str) -> Result<(Child, ChildStdout), String> {
   Ok((child, stdout))
 }
 
+#[cfg(target_os = "linux")]
 fn compute_stereo_rms(frame_bytes: &[u8]) -> Option<(f32, f32)> {
   if frame_bytes.len() < 4 {
     return None;
@@ -356,6 +367,7 @@ fn start_system_vu_meter(
   app: AppHandle,
   runtime: State<'_, SystemVuMeterRuntime>,
 ) -> Result<(), String> {
+  #[allow(unused_mut)]
   let mut capture_guard = runtime
     .capture
     .lock()

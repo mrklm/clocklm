@@ -5,6 +5,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.76] - 2026-04-17
+
+### Modifié
+
+ - Ajustement release macOS
+
 ## [1.0.75] - 2026-04-17
 
 ### Modifié

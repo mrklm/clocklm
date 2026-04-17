@@ -1,6 +1,6 @@
 [package]
 name = "clocklm"
-version = "1.0.75"
+version = "1.0.76"
 description = "Clocklm desktop application"
 authors = ["Clocklm"]
 edition = "2021"
