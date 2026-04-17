@@ -2062,11 +2062,7 @@ function App() {
     isTauriApp
     && typeof window !== 'undefined'
     && /\bMacintosh\b|\bMac OS X\b/i.test(window.navigator.userAgent);
-  const isWindowsDesktopTauri =
-    isTauriApp
-    && typeof window !== 'undefined'
-    && /\bWindows\b|\bWin32\b|\bWin64\b/i.test(window.navigator.userAgent);
-  const shouldEnableLinuxNativeVuMeter = true;
+  const shouldEnableLinuxNativeVuMeter = false;
   const shouldUseLinuxNativeVuMeter =
     shouldEnableLinuxNativeVuMeter
     && isLinuxDesktopTauri
@@ -2405,7 +2401,7 @@ function App() {
       const audioElement = liveAudioElementRef.current;
       const audio = await playAudioFromCandidates(candidateUrls, {
         preload: 'none',
-        preferCrossOrigin: !isTauriApp || isMacDesktopTauri,
+        preferCrossOrigin: !isTauriApp,
         audioElement,
       });
       liveRadioAudioRef.current = audio;
@@ -2610,7 +2606,7 @@ function App() {
       return track.playbackUrl;
     }
 
-    if (isWindowsDesktopTauri && track.nativePath) {
+    if (isTauriApp && track.nativePath) {
       const coreApi = await import('@tauri-apps/api/core');
       const audioBytes = await coreApi.invoke<number[]>('read_audio_file_bytes', {
         path: track.nativePath,
@@ -2687,7 +2683,7 @@ function App() {
           sourceUrl: coreApi.convertFileSrc(normalizeNativeAudioTrackPath(track.path)),
           nativePath: track.path,
           playbackUrl: undefined,
-          fetchBeforePlay: isWindowsDesktopTauri || isLinuxDesktopTauri,
+          fetchBeforePlay: true,
           revokeOnClear: false,
         }))
         .sort((left, right) =>
@@ -3134,10 +3130,6 @@ function App() {
           outputGain.gain.value = 1;
 
           source.connect(splitter);
-          if (!useCapturedMediaStream) {
-            source.connect(outputGain);
-            outputGain.connect(audioContext.destination);
-          }
           splitter.connect(leftAnalyser, 0);
           splitter.connect(rightAnalyser, 1);
 
