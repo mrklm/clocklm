@@ -2062,10 +2062,6 @@ function App() {
     isTauriApp
     && typeof window !== 'undefined'
     && /\bMacintosh\b|\bMac OS X\b/i.test(window.navigator.userAgent);
-  const isWindowsDesktopTauri =
-    isTauriApp
-    && typeof window !== 'undefined'
-    && /\bWindows\b|\bWin32\b|\bWin64\b/i.test(window.navigator.userAgent);
   const shouldEnableLinuxNativeVuMeter = false;
   const shouldUseLinuxNativeVuMeter =
     shouldEnableLinuxNativeVuMeter
@@ -2612,7 +2608,7 @@ function App() {
       return track.playbackUrl;
     }
 
-    if ((isMacDesktopTauri || isWindowsDesktopTauri) && track.nativePath) {
+    if (isTauriApp && track.nativePath) {
       const coreApi = await import('@tauri-apps/api/core');
       const audioBytes = await coreApi.invoke<number[]>('read_audio_file_bytes', {
         path: track.nativePath,
@@ -2689,7 +2685,7 @@ function App() {
           sourceUrl: coreApi.convertFileSrc(normalizeNativeAudioTrackPath(track.path)),
           nativePath: track.path,
           playbackUrl: undefined,
-          fetchBeforePlay: isMacDesktopTauri || isWindowsDesktopTauri,
+          fetchBeforePlay: true,
           revokeOnClear: false,
         }))
         .sort((left, right) =>
@@ -3100,12 +3096,12 @@ function App() {
 
         if (shouldRebuildGraph) {
           const captureStream = getMediaCaptureStream(activeAudio);
-          const captureStreamHasAudioTrack = Boolean(captureStream?.getAudioTracks().length);
           const shouldUseSafeMacGraph = isMacDesktopTauri;
           const useCapturedMediaStream =
-            captureStreamHasAudioTrack
+            Boolean(captureStream)
             && (
               !isTauriApp
+              || liveAudioSource === 'radio'
               || isLinuxDesktopTauri
             );
           const shouldRouteVuMeterToDestination = !useCapturedMediaStream;
