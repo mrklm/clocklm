@@ -2066,15 +2066,16 @@ function App() {
     isTauriApp
     && typeof window !== 'undefined'
     && /\bWindows\b|\bWin32\b|\bWin64\b/i.test(window.navigator.userAgent);
-  const shouldEnableLinuxNativeVuMeter = false;
+  const shouldEnableLinuxNativeVuMeter = true;
   const nativeVuMeterIsFresh = Date.now() - nativeVuMeterLastUpdateRef.current < 2500;
   const shouldPreferNativeVuMeter =
     shouldEnableLinuxNativeVuMeter
     && isLinuxDesktopTauri
     && nativeVuMeterIsFresh
-    && nativeVuMeterLevels.length > 0
-    && liveRadioPlaybackState !== 'playing';
-  const shouldDisableWebAudioVuMeter = isLinuxDesktopTauri && shouldPreferNativeVuMeter;
+    && nativeVuMeterLevels.length > 0;
+  const shouldDisableWebAudioVuMeter =
+    isLinuxDesktopTauri
+    && shouldEnableLinuxNativeVuMeter;
   const activeVuMeterLevels = shouldPreferNativeVuMeter ? nativeVuMeterLevels : vuMeterLevels;
   const activeVuMeterWaveform = shouldPreferNativeVuMeter
     ? nativeVuMeterWaveform
@@ -2400,7 +2401,7 @@ function App() {
       const audioElement = liveAudioElementRef.current;
       const audio = await playAudioFromCandidates(candidateUrls, {
         preload: 'none',
-        preferCrossOrigin: !isTauriApp,
+        preferCrossOrigin: !isTauriApp || isMacDesktopTauri,
         audioElement,
       });
       liveRadioAudioRef.current = audio;
@@ -2934,9 +2935,8 @@ function App() {
 
       const shouldRunNativeSystemVuMeter =
         shouldEnableLinuxNativeVuMeter
-        && liveAudioSource === 'directory'
         && vuMeterEnabled
-        && liveRadioPlaybackState !== 'playing';
+        && liveRadioPlaybackState === 'playing';
 
       if (shouldRunNativeSystemVuMeter) {
         await coreApi.invoke('start_system_vu_meter').catch(() => undefined);
