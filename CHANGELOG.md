@@ -5,6 +5,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.74] - 2026-04-17
+
+### Modifié
+
+ - Stabilisation audio desktop
+
 ## [1.0.73] - 2026-04-17
 
 ### Modifié

@@ -2503,11 +2503,13 @@ function App() {
         audio.removeAttribute('crossorigin');
       }
 
-      if (audio.src !== playbackUrl) {
+      const sourceChanged = audio.src !== playbackUrl;
+      if (sourceChanged) {
         audio.src = playbackUrl;
       }
-      audio.currentTime = 0;
-      audio.load();
+      if (!sourceChanged) {
+        audio.currentTime = 0;
+      }
 
       audio.preload = 'auto';
       audio.onended = () => {
@@ -3100,14 +3102,22 @@ function App() {
           const captureStream = getMediaCaptureStream(activeAudio);
           const captureStreamHasAudioTrack = Boolean(captureStream?.getAudioTracks().length);
           const shouldUseSafeMacGraph = isMacDesktopTauri;
-          const shouldRouteVuMeterToDestination = !isLinuxDesktopTauri;
           const useCapturedMediaStream =
             captureStreamHasAudioTrack
             && (
               !isTauriApp
-              || liveAudioSource === 'radio'
-              || shouldUseSafeMacGraph
+              || isLinuxDesktopTauri
             );
+          const shouldRouteVuMeterToDestination = !useCapturedMediaStream;
+
+          if (isLinuxDesktopTauri && !useCapturedMediaStream) {
+            logDesktopMediaDebug('vu-meter:no-capture-stream', {
+              snapshot: buildAudioDebugSnapshot(activeAudio),
+            });
+            setVuMeterLevels([]);
+            setVuMeterWaveform([]);
+            return;
+          }
           logDesktopMediaDebug('vu-meter:build-graph', {
             strategy: useCapturedMediaStream
               ? 'captureStream'
