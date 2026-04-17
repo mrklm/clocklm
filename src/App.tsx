@@ -2067,15 +2067,19 @@ function App() {
     && typeof window !== 'undefined'
     && /\bWindows\b|\bWin32\b|\bWin64\b/i.test(window.navigator.userAgent);
   const shouldEnableLinuxNativeVuMeter = true;
-  const nativeVuMeterIsFresh = Date.now() - nativeVuMeterLastUpdateRef.current < 2500;
-  const shouldPreferNativeVuMeter =
+  const shouldUseLinuxNativeVuMeter =
     shouldEnableLinuxNativeVuMeter
     && isLinuxDesktopTauri
+    && liveAudioSource === 'radio';
+  const nativeVuMeterIsFresh = Date.now() - nativeVuMeterLastUpdateRef.current < 2500;
+  const shouldPreferNativeVuMeter =
+    shouldUseLinuxNativeVuMeter
     && nativeVuMeterIsFresh
     && nativeVuMeterLevels.length > 0;
   const shouldDisableWebAudioVuMeter =
-    isLinuxDesktopTauri
-    && shouldEnableLinuxNativeVuMeter;
+    shouldUseLinuxNativeVuMeter
+    && nativeVuMeterIsFresh
+    && nativeVuMeterLevels.length > 0;
   const activeVuMeterLevels = shouldPreferNativeVuMeter ? nativeVuMeterLevels : vuMeterLevels;
   const activeVuMeterWaveform = shouldPreferNativeVuMeter
     ? nativeVuMeterWaveform
@@ -2934,7 +2938,7 @@ function App() {
       }
 
       const shouldRunNativeSystemVuMeter =
-        shouldEnableLinuxNativeVuMeter
+        shouldUseLinuxNativeVuMeter
         && vuMeterEnabled
         && liveRadioPlaybackState === 'playing';
 
@@ -2965,7 +2969,7 @@ function App() {
     isLinuxDesktopTauri,
     liveAudioSource,
     liveRadioPlaybackState,
-    shouldEnableLinuxNativeVuMeter,
+    shouldUseLinuxNativeVuMeter,
     vuMeterEnabled,
   ]);
 
@@ -3095,7 +3099,13 @@ function App() {
         if (shouldRebuildGraph) {
           const captureStream = getMediaCaptureStream(activeAudio);
           const shouldUseSafeMacGraph = isMacDesktopTauri;
-          const useCapturedMediaStream = !isTauriApp && Boolean(captureStream);
+          const useCapturedMediaStream =
+            Boolean(captureStream)
+            && (
+              !isTauriApp
+              || liveAudioSource === 'radio'
+              || shouldUseSafeMacGraph
+            );
           logDesktopMediaDebug('vu-meter:build-graph', {
             strategy: useCapturedMediaStream
               ? 'captureStream'
