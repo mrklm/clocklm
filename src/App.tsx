@@ -246,6 +246,20 @@ function computeRmsLevel(values: Uint8Array) {
   return clamp01(Math.sqrt(sum / values.length) * Math.SQRT2);
 }
 
+function computeFrequencyEnergyLevel(values: Uint8Array) {
+  if (values.length === 0) {
+    return 0;
+  }
+
+  let sum = 0;
+  for (const value of values) {
+    const normalized = value / 255;
+    sum += normalized * normalized;
+  }
+
+  return clamp01(Math.sqrt(sum / values.length) * 1.25);
+}
+
 function averageFrequencyData(left: Uint8Array, right: Uint8Array) {
   const length = Math.min(left.length, right.length);
   return Uint8Array.from({ length }, (_, index) =>
@@ -2062,6 +2076,10 @@ function App() {
     isTauriApp
     && typeof window !== 'undefined'
     && /\bMacintosh\b|\bMac OS X\b/i.test(window.navigator.userAgent);
+  const isWindowsDesktopTauri =
+    isTauriApp
+    && typeof window !== 'undefined'
+    && /\bWindows\b|\bWin32\b|\bWin64\b/i.test(window.navigator.userAgent);
   const shouldEnableLinuxNativeVuMeter = false;
   const shouldUseLinuxNativeVuMeter =
     shouldEnableLinuxNativeVuMeter
@@ -2608,7 +2626,7 @@ function App() {
       return track.playbackUrl;
     }
 
-    if (isTauriApp && track.nativePath) {
+    if ((isMacDesktopTauri || isWindowsDesktopTauri) && track.nativePath) {
       const coreApi = await import('@tauri-apps/api/core');
       const audioBytes = await coreApi.invoke<number[]>('read_audio_file_bytes', {
         path: track.nativePath,
@@ -2685,7 +2703,7 @@ function App() {
           sourceUrl: coreApi.convertFileSrc(normalizeNativeAudioTrackPath(track.path)),
           nativePath: track.path,
           playbackUrl: undefined,
-          fetchBeforePlay: true,
+          fetchBeforePlay: isMacDesktopTauri || isWindowsDesktopTauri,
           revokeOnClear: false,
         }))
         .sort((left, right) =>
@@ -3196,8 +3214,14 @@ function App() {
 
           const monoFrequencyData = averageFrequencyData(leftFrequencyData, rightFrequencyData);
           const monoWaveformData = averageWaveformData(leftWaveformData, rightWaveformData);
-          const leftLevel = computeRmsLevel(leftWaveformData);
-          const rightLevel = computeRmsLevel(rightWaveformData);
+          const leftRmsLevel = computeRmsLevel(leftWaveformData);
+          const rightRmsLevel = computeRmsLevel(rightWaveformData);
+          const leftLevel = leftRmsLevel > 0.004
+            ? leftRmsLevel
+            : computeFrequencyEnergyLevel(leftFrequencyData);
+          const rightLevel = rightRmsLevel > 0.004
+            ? rightRmsLevel
+            : computeFrequencyEnergyLevel(rightFrequencyData);
           const monoLevel = clamp01(Math.sqrt(((leftLevel ** 2) + (rightLevel ** 2)) / 2));
 
           if (
