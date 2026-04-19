@@ -1178,6 +1178,27 @@ async function playAudioFromCandidates(
   throw lastError ?? new Error('audio_playback_failed');
 }
 
+async function buildNativeTrackPlaybackUrl(track: LiveDirectoryTrack) {
+  if (!track.nativePath) {
+    throw new Error('native_track_path_missing');
+  }
+
+  const coreApi = await import('@tauri-apps/api/core');
+  const audioBytes = await coreApi.invoke<number[]>('read_audio_file_bytes', {
+    path: track.nativePath,
+  });
+  const audioBlob = new Blob([Uint8Array.from(audioBytes)], {
+    type: getAudioMimeType(track.name),
+  });
+
+  if (track.playbackUrl && track.playbackUrl !== track.sourceUrl) {
+    URL.revokeObjectURL(track.playbackUrl);
+  }
+
+  track.playbackUrl = URL.createObjectURL(audioBlob);
+  return track.playbackUrl;
+}
+
 function normalizeLautFmStation(station: {
   name?: unknown;
   display_name?: unknown;
@@ -2561,7 +2582,23 @@ function App() {
       };
       liveRadioAudioRef.current = audio;
       setLiveDirectoryTrackLabel(selectedTrack.name || liveDirectoryName);
-      await audio.play();
+      try {
+        await audio.play();
+      } catch (playError) {
+        if (
+          isLinuxDesktopTauri
+          && selectedTrack.nativePath
+          && playbackUrl === selectedTrack.sourceUrl
+        ) {
+          const fallbackPlaybackUrl = await buildNativeTrackPlaybackUrl(selectedTrack);
+          audio.pause();
+          audio.src = fallbackPlaybackUrl;
+          audio.load();
+          await audio.play();
+        } else {
+          throw playError;
+        }
+      }
       setLiveRadioPlaybackState('playing');
       logDesktopMediaDebug('playLiveDirectoryTrack:playing', {
         trackIndex,
@@ -2629,15 +2666,7 @@ function App() {
     }
 
     if ((isMacDesktopTauri || isWindowsDesktopTauri) && track.nativePath) {
-      const coreApi = await import('@tauri-apps/api/core');
-      const audioBytes = await coreApi.invoke<number[]>('read_audio_file_bytes', {
-        path: track.nativePath,
-      });
-      const audioBlob = new Blob([Uint8Array.from(audioBytes)], {
-        type: getAudioMimeType(track.name),
-      });
-      track.playbackUrl = URL.createObjectURL(audioBlob);
-      return track.playbackUrl;
+      return buildNativeTrackPlaybackUrl(track);
     }
 
     const response = await fetch(track.sourceUrl);
@@ -3121,23 +3150,8 @@ function App() {
         if (shouldRebuildGraph) {
           const captureStream = getMediaCaptureStream(activeAudio);
           const shouldUseSafeMacGraph = isMacDesktopTauri;
-          const useCapturedMediaStream =
-            Boolean(captureStream)
-            && (
-              !isTauriApp
-              || liveAudioSource === 'radio'
-              || isLinuxDesktopTauri
-            );
-          const shouldRouteVuMeterToDestination = !useCapturedMediaStream;
-
-          if (isLinuxDesktopTauri && !useCapturedMediaStream) {
-            logDesktopMediaDebug('vu-meter:no-capture-stream', {
-              snapshot: buildAudioDebugSnapshot(activeAudio),
-            });
-            setVuMeterLevels([]);
-            setVuMeterWaveform([]);
-            return;
-          }
+          const useCapturedMediaStream = !isTauriApp && Boolean(captureStream);
+          const shouldRouteVuMeterToDestination = !isTauriApp && !useCapturedMediaStream;
           logDesktopMediaDebug('vu-meter:build-graph', {
             strategy: useCapturedMediaStream
               ? 'captureStream'
