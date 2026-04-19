@@ -5,6 +5,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.81] - 2026-04-19
+
+### Modifié
+
+ - Ajuste l audio desktop et les VU-metres
+
 ## [1.0.80] - 2026-04-19
 
 ### Modifié
