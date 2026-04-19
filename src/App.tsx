@@ -1817,6 +1817,7 @@ function App() {
   const liveDirectoryInputRef = useRef<HTMLInputElement | null>(null);
   const liveDirectoryFilesRef = useRef<LiveDirectoryTrack[]>([]);
   const vuMeterAudioContextRef = useRef<AudioContext | null>(null);
+  const vuMeterMonoAnalyserRef = useRef<AnalyserNode | null>(null);
   const vuMeterLeftAnalyserRef = useRef<AnalyserNode | null>(null);
   const vuMeterRightAnalyserRef = useRef<AnalyserNode | null>(null);
   const vuMeterChannelSplitterRef = useRef<ChannelSplitterNode | null>(null);
@@ -2520,6 +2521,7 @@ function App() {
       const sourceChanged = audio.src !== playbackUrl;
       if (sourceChanged) {
         audio.src = playbackUrl;
+        audio.load();
       }
       if (!sourceChanged) {
         audio.currentTime = 0;
@@ -3034,6 +3036,7 @@ function App() {
       vuMeterSourceRef.current?.disconnect();
       vuMeterChannelSplitterRef.current?.disconnect();
       vuMeterOutputGainRef.current?.disconnect();
+      vuMeterMonoAnalyserRef.current?.disconnect();
       vuMeterLeftAnalyserRef.current?.disconnect();
       vuMeterRightAnalyserRef.current?.disconnect();
       vuMeterSmoothedLevelsRef.current = [];
@@ -3066,6 +3069,7 @@ function App() {
           vuMeterConnectedAudioRef.current !== activeAudio
           || vuMeterGraphBuildVersionRef.current !== vuMeterReconnectToken
           || !vuMeterSourceRef.current
+          || !vuMeterMonoAnalyserRef.current
           || !vuMeterChannelSplitterRef.current
           || !vuMeterLeftAnalyserRef.current
           || !vuMeterRightAnalyserRef.current
@@ -3080,8 +3084,10 @@ function App() {
           vuMeterSourceRef.current?.disconnect();
           vuMeterChannelSplitterRef.current?.disconnect();
           vuMeterOutputGainRef.current?.disconnect();
+          vuMeterMonoAnalyserRef.current?.disconnect();
           vuMeterLeftAnalyserRef.current?.disconnect();
           vuMeterRightAnalyserRef.current?.disconnect();
+          vuMeterMonoAnalyserRef.current = null;
           vuMeterChannelSplitterRef.current = null;
           vuMeterLeftAnalyserRef.current = null;
           vuMeterRightAnalyserRef.current = null;
@@ -3149,10 +3155,13 @@ function App() {
               : useCapturedMediaStream && captureStream
                 ? audioContext.createMediaStreamSource(captureStream)
                 : audioContext.createMediaElementSource(activeAudio);
+          const monoAnalyser = audioContext.createAnalyser();
           const splitter = audioContext.createChannelSplitter(2);
           const leftAnalyser = audioContext.createAnalyser();
           const rightAnalyser = audioContext.createAnalyser();
           const outputGain = audioContext.createGain();
+          monoAnalyser.fftSize = 256;
+          monoAnalyser.smoothingTimeConstant = 0.82;
           leftAnalyser.fftSize = 256;
           rightAnalyser.fftSize = 256;
           leftAnalyser.smoothingTimeConstant = 0.82;
@@ -3160,6 +3169,7 @@ function App() {
           outputGain.gain.value = 1;
 
           source.connect(splitter);
+          source.connect(monoAnalyser);
           if (!useCapturedMediaStream && shouldRouteVuMeterToDestination) {
             source.connect(outputGain);
             outputGain.connect(audioContext.destination);
@@ -3168,6 +3178,7 @@ function App() {
           splitter.connect(rightAnalyser, 1);
 
           vuMeterSourceRef.current = source;
+          vuMeterMonoAnalyserRef.current = monoAnalyser;
           vuMeterChannelSplitterRef.current = splitter;
           vuMeterLeftAnalyserRef.current = leftAnalyser;
           vuMeterRightAnalyserRef.current = rightAnalyser;
@@ -3179,12 +3190,15 @@ function App() {
           vuMeterReconnectInFlightRef.current = false;
         }
 
+        const monoAnalyser = vuMeterMonoAnalyserRef.current;
         const leftAnalyser = vuMeterLeftAnalyserRef.current;
         const rightAnalyser = vuMeterRightAnalyserRef.current;
-        if (!leftAnalyser || !rightAnalyser) {
+        if (!monoAnalyser || !leftAnalyser || !rightAnalyser) {
           return;
         }
 
+        const monoSourceFrequencyData = new Uint8Array(monoAnalyser.frequencyBinCount);
+        const monoSourceWaveformData = new Uint8Array(monoAnalyser.fftSize);
         const leftFrequencyData = new Uint8Array(leftAnalyser.frequencyBinCount);
         const rightFrequencyData = new Uint8Array(rightAnalyser.frequencyBinCount);
         const leftWaveformData = new Uint8Array(leftAnalyser.fftSize);
@@ -3207,21 +3221,35 @@ function App() {
           }
 
           vuMeterLastPaintTimeRef.current = frameTime;
+          monoAnalyser.getByteFrequencyData(monoSourceFrequencyData);
+          monoAnalyser.getByteTimeDomainData(monoSourceWaveformData);
           leftAnalyser.getByteFrequencyData(leftFrequencyData);
           rightAnalyser.getByteFrequencyData(rightFrequencyData);
           leftAnalyser.getByteTimeDomainData(leftWaveformData);
           rightAnalyser.getByteTimeDomainData(rightWaveformData);
 
-          const monoFrequencyData = averageFrequencyData(leftFrequencyData, rightFrequencyData);
-          const monoWaveformData = averageWaveformData(leftWaveformData, rightWaveformData);
+          const monoFrequencyData =
+            leftFrequencyData.some((value) => value > 0) || rightFrequencyData.some((value) => value > 0)
+              ? averageFrequencyData(leftFrequencyData, rightFrequencyData)
+              : monoSourceFrequencyData;
+          const monoWaveformData =
+            leftWaveformData.some((value) => value !== 128) || rightWaveformData.some((value) => value !== 128)
+              ? averageWaveformData(leftWaveformData, rightWaveformData)
+              : monoSourceWaveformData;
+          const monoSourceRmsLevel = computeRmsLevel(monoSourceWaveformData);
+          const monoSourceEnergyLevel = computeFrequencyEnergyLevel(monoSourceFrequencyData);
           const leftRmsLevel = computeRmsLevel(leftWaveformData);
           const rightRmsLevel = computeRmsLevel(rightWaveformData);
           const leftLevel = leftRmsLevel > 0.004
             ? leftRmsLevel
-            : computeFrequencyEnergyLevel(leftFrequencyData);
+            : leftFrequencyData.some((value) => value > 0)
+              ? computeFrequencyEnergyLevel(leftFrequencyData)
+              : Math.max(monoSourceRmsLevel, monoSourceEnergyLevel);
           const rightLevel = rightRmsLevel > 0.004
             ? rightRmsLevel
-            : computeFrequencyEnergyLevel(rightFrequencyData);
+            : rightFrequencyData.some((value) => value > 0)
+              ? computeFrequencyEnergyLevel(rightFrequencyData)
+              : Math.max(monoSourceRmsLevel, monoSourceEnergyLevel);
           const monoLevel = clamp01(Math.sqrt(((leftLevel ** 2) + (rightLevel ** 2)) / 2));
 
           if (
