@@ -5,6 +5,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.83] - 2026-04-19
+
+### Modifié
+
+ - Ajuste le routage audio desktop
+
 ## [1.0.82] - 2026-04-19
 
 ### Modifié

@@ -3150,7 +3150,18 @@ function App() {
         if (shouldRebuildGraph) {
           const captureStream = getMediaCaptureStream(activeAudio);
           const shouldUseSafeMacGraph = isMacDesktopTauri;
-          const useCapturedMediaStream = !isTauriApp && Boolean(captureStream);
+          const useCapturedMediaStream =
+            Boolean(captureStream)
+            && (
+              !isTauriApp
+              || liveAudioSource === 'directory'
+            );
+          const shouldRouteVuMeterToDestination =
+            !useCapturedMediaStream
+            && (
+              !isTauriApp
+              || liveAudioSource === 'radio'
+            );
           logDesktopMediaDebug('vu-meter:build-graph', {
             strategy: useCapturedMediaStream
               ? 'captureStream'
@@ -3183,6 +3194,10 @@ function App() {
 
           source.connect(splitter);
           source.connect(monoAnalyser);
+          if (shouldRouteVuMeterToDestination) {
+            source.connect(outputGain);
+            outputGain.connect(audioContext.destination);
+          }
           splitter.connect(leftAnalyser, 0);
           splitter.connect(rightAnalyser, 1);
 
