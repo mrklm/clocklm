@@ -5,6 +5,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.87] - 2026-04-20
+
+### Modifié
+
+ - Recentre le monitoring VU sur macOS
+
 ## [1.0.86] - 2026-04-20
 
 ### Modifié

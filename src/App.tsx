@@ -3061,7 +3061,7 @@ function App() {
     const primaryAudio = liveRadioAudioRef.current;
     const monitorAudio = vuMeterMonitorAudioRef.current;
     const shouldUseDesktopMonitor =
-      isTauriApp
+      isMacDesktopTauri
       && vuMeterEnabled
       && liveRadioPlaybackState === 'playing'
       && Boolean(primaryAudio);
@@ -3164,7 +3164,7 @@ function App() {
       cleanupFns.forEach((cleanup) => cleanup());
     };
   }, [
-    isTauriApp,
+    isMacDesktopTauri,
     liveAudioSource,
     liveRadioPlaybackState,
     vuMeterEnabled,
@@ -3172,7 +3172,7 @@ function App() {
 
   useEffect(() => {
     const activeAudio =
-      isTauriApp
+      isMacDesktopTauri
         ? vuMeterMonitorAudioRef.current ?? liveRadioAudioRef.current
         : liveRadioAudioRef.current;
     let cancelled = false;
@@ -3479,7 +3479,6 @@ function App() {
       });
     };
   }, [
-    isTauriApp,
     isMacDesktopTauri,
     liveRadioPlaybackState,
     shouldDisableWebAudioVuMeter,
