@@ -1835,6 +1835,7 @@ function App() {
   const triggeredAlarmKeysRef = useRef<Set<string>>(new Set());
   const liveAudioElementRef = useRef<HTMLAudioElement | null>(null);
   const liveRadioAudioRef = useRef<HTMLAudioElement | null>(null);
+  const vuMeterMonitorAudioRef = useRef<HTMLAudioElement | null>(null);
   const liveDirectoryInputRef = useRef<HTMLInputElement | null>(null);
   const liveDirectoryFilesRef = useRef<LiveDirectoryTrack[]>([]);
   const vuMeterAudioContextRef = useRef<AudioContext | null>(null);
@@ -1852,6 +1853,7 @@ function App() {
   const vuMeterGraphBuildVersionRef = useRef(0);
   const vuMeterReconnectInFlightRef = useRef(false);
   const [vuMeterReconnectToken, setVuMeterReconnectToken] = useState(0);
+  const [vuMeterMonitorToken, setVuMeterMonitorToken] = useState(0);
   const nativeVuMeterLastUpdateRef = useRef(0);
   const liveAudioStoppingRef = useRef(false);
   const liveDirectoryTrackIndexRef = useRef(0);
@@ -2183,6 +2185,7 @@ function App() {
 
   const stopLiveRadioPlayback = () => {
     const activeAudio = liveRadioAudioRef.current;
+    const monitorAudio = vuMeterMonitorAudioRef.current;
     logDesktopMediaDebug('stopLiveRadioPlayback:start', {
       source: liveAudioSource,
       playbackState: liveRadioPlaybackState,
@@ -2204,6 +2207,13 @@ function App() {
         activeAudio.load();
         liveRadioAudioRef.current = null;
       }
+    }
+    if (monitorAudio) {
+      monitorAudio.pause();
+      monitorAudio.removeAttribute('src');
+      monitorAudio.load();
+      vuMeterMonitorAudioRef.current = null;
+      setVuMeterMonitorToken((value) => value + 1);
     }
 
     setLiveRadioPlaybackState('idle');
@@ -3049,7 +3059,83 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const activeAudio = liveRadioAudioRef.current;
+    const primaryAudio = liveRadioAudioRef.current;
+    const shouldUseDesktopMonitor =
+      isTauriApp
+      && vuMeterEnabled
+      && liveRadioPlaybackState === 'playing'
+      && Boolean(primaryAudio);
+
+    if (!shouldUseDesktopMonitor) {
+      const existingMonitor = vuMeterMonitorAudioRef.current;
+      if (existingMonitor) {
+        existingMonitor.pause();
+        existingMonitor.removeAttribute('src');
+        existingMonitor.load();
+        vuMeterMonitorAudioRef.current = null;
+        setVuMeterMonitorToken((value) => value + 1);
+      }
+      return;
+    }
+
+    const monitorAudio = vuMeterMonitorAudioRef.current ?? new Audio();
+    let cancelled = false;
+    const targetSrc = primaryAudio?.currentSrc || primaryAudio?.src || '';
+
+    vuMeterMonitorAudioRef.current = monitorAudio;
+    monitorAudio.muted = true;
+    monitorAudio.volume = 0;
+    monitorAudio.preload = 'auto';
+    monitorAudio.loop = false;
+    if (primaryAudio?.crossOrigin) {
+      monitorAudio.crossOrigin = primaryAudio.crossOrigin;
+    } else {
+      monitorAudio.removeAttribute('crossorigin');
+    }
+
+    const syncMonitor = async () => {
+      if (!targetSrc) {
+        return;
+      }
+
+      const sourceChanged = monitorAudio.src !== targetSrc;
+      if (sourceChanged) {
+        monitorAudio.pause();
+        monitorAudio.src = targetSrc;
+        monitorAudio.load();
+      }
+
+      if (liveAudioSource === 'directory' && Number.isFinite(primaryAudio?.currentTime)) {
+        try {
+          monitorAudio.currentTime = primaryAudio?.currentTime ?? 0;
+        } catch {
+          // Some desktop runtimes reject seeks before metadata is fully ready.
+        }
+      }
+
+      await monitorAudio.play().catch(() => undefined);
+      if (!cancelled) {
+        setVuMeterMonitorToken((value) => value + 1);
+      }
+    };
+
+    void syncMonitor();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isTauriApp,
+    liveAudioSource,
+    liveRadioPlaybackState,
+    vuMeterEnabled,
+  ]);
+
+  useEffect(() => {
+    const activeAudio =
+      isTauriApp
+        ? vuMeterMonitorAudioRef.current ?? liveRadioAudioRef.current
+        : liveRadioAudioRef.current;
     let cancelled = false;
 
       if (
@@ -3354,10 +3440,12 @@ function App() {
       });
     };
   }, [
+    isTauriApp,
     isMacDesktopTauri,
     liveRadioPlaybackState,
     shouldDisableWebAudioVuMeter,
     vuMeterEnabled,
+    vuMeterMonitorToken,
     vuMeterStyle,
     vuMeterReconnectToken,
   ]);
