@@ -5,6 +5,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.86] - 2026-04-20
+
+### Modifié
+
+ - Relance le monitoring du VU-metre sur desktop
+
 ## [1.0.85] - 2026-04-20
 
 ### Modifié

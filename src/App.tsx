@@ -3093,7 +3093,7 @@ function App() {
       monitorAudio.removeAttribute('crossorigin');
     }
 
-    const syncMonitor = async () => {
+    const syncMonitor = async (forceSeek = false) => {
       if (!targetSrc) {
         return;
       }
@@ -3105,7 +3105,10 @@ function App() {
         monitorAudio.load();
       }
 
-      if (liveAudioSource === 'directory' && Number.isFinite(primaryAudio?.currentTime)) {
+      if (
+        (forceSeek || liveAudioSource === 'directory')
+        && Number.isFinite(primaryAudio?.currentTime)
+      ) {
         try {
           monitorAudio.currentTime = primaryAudio?.currentTime ?? 0;
         } catch {
@@ -3121,8 +3124,44 @@ function App() {
 
     void syncMonitor();
 
+    const monitorEventNames = ['pause', 'stalled', 'suspend', 'waiting', 'emptied'] as const;
+    const handleMonitorDrift = () => {
+      if (cancelled || !primaryAudio || liveRadioPlaybackState !== 'playing') {
+        return;
+      }
+
+      const driftSeconds = Math.abs((monitorAudio.currentTime || 0) - (primaryAudio.currentTime || 0));
+      const shouldResync =
+        monitorAudio.paused
+        || monitorAudio.ended
+        || monitorAudio.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
+        || driftSeconds > 1.25;
+
+      if (!shouldResync) {
+        return;
+      }
+
+      logDesktopMediaDebug('vu-meter:monitor-resync', {
+        monitor: buildAudioDebugSnapshot(monitorAudio),
+        primary: buildAudioDebugSnapshot(primaryAudio),
+        driftSeconds,
+      });
+      void syncMonitor(true);
+    };
+
+    const cleanupFns = monitorEventNames.map((eventName) => {
+      monitorAudio.addEventListener(eventName, handleMonitorDrift);
+      return () => {
+        monitorAudio.removeEventListener(eventName, handleMonitorDrift);
+      };
+    });
+
+    const resyncTimer = window.setInterval(handleMonitorDrift, 1500);
+
     return () => {
       cancelled = true;
+      window.clearInterval(resyncTimer);
+      cleanupFns.forEach((cleanup) => cleanup());
     };
   }, [
     isTauriApp,
