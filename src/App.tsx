@@ -2115,12 +2115,9 @@ function App() {
     && nativeVuMeterIsFresh
     && nativeVuMeterLevels.length > 0;
   const shouldDisableWebAudioVuMeter =
-    isLinuxDesktopTauri
-    || (
-      shouldUseLinuxNativeVuMeter
-      && nativeVuMeterIsFresh
-      && nativeVuMeterLevels.length > 0
-    );
+    shouldUseLinuxNativeVuMeter
+    && nativeVuMeterIsFresh
+    && nativeVuMeterLevels.length > 0;
   const activeVuMeterLevels = shouldPreferNativeVuMeter ? nativeVuMeterLevels : vuMeterLevels;
   const activeVuMeterWaveform = shouldPreferNativeVuMeter
     ? nativeVuMeterWaveform
@@ -3064,7 +3061,7 @@ function App() {
     const primaryAudio = liveRadioAudioRef.current;
     const monitorAudio = vuMeterMonitorAudioRef.current;
     const shouldUseDesktopMonitor =
-      isMacDesktopTauri
+      isTauriApp
       && vuMeterEnabled
       && liveRadioPlaybackState === 'playing'
       && Boolean(primaryAudio);
@@ -3096,7 +3093,7 @@ function App() {
       monitorAudio.removeAttribute('crossorigin');
     }
 
-    const syncMonitor = async (forceSeek = false) => {
+    const syncMonitor = async () => {
       if (!targetSrc) {
         return;
       }
@@ -3108,10 +3105,7 @@ function App() {
         monitorAudio.load();
       }
 
-      if (
-        (forceSeek || liveAudioSource === 'directory')
-        && Number.isFinite(primaryAudio?.currentTime)
-      ) {
+      if (liveAudioSource === 'directory' && Number.isFinite(primaryAudio?.currentTime)) {
         try {
           monitorAudio.currentTime = primaryAudio?.currentTime ?? 0;
         } catch {
@@ -3127,47 +3121,11 @@ function App() {
 
     void syncMonitor();
 
-    const monitorEventNames = ['pause', 'stalled', 'suspend', 'waiting', 'emptied'] as const;
-    const handleMonitorDrift = () => {
-      if (cancelled || !primaryAudio || liveRadioPlaybackState !== 'playing') {
-        return;
-      }
-
-      const driftSeconds = Math.abs((monitorAudio.currentTime || 0) - (primaryAudio.currentTime || 0));
-      const shouldResync =
-        monitorAudio.paused
-        || monitorAudio.ended
-        || monitorAudio.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
-        || driftSeconds > 1.25;
-
-      if (!shouldResync) {
-        return;
-      }
-
-      logDesktopMediaDebug('vu-meter:monitor-resync', {
-        monitor: buildAudioDebugSnapshot(monitorAudio),
-        primary: buildAudioDebugSnapshot(primaryAudio),
-        driftSeconds,
-      });
-      void syncMonitor(true);
-    };
-
-    const cleanupFns = monitorEventNames.map((eventName) => {
-      monitorAudio.addEventListener(eventName, handleMonitorDrift);
-      return () => {
-        monitorAudio.removeEventListener(eventName, handleMonitorDrift);
-      };
-    });
-
-    const resyncTimer = window.setInterval(handleMonitorDrift, 1500);
-
     return () => {
       cancelled = true;
-      window.clearInterval(resyncTimer);
-      cleanupFns.forEach((cleanup) => cleanup());
     };
   }, [
-    isMacDesktopTauri,
+    isTauriApp,
     liveAudioSource,
     liveRadioPlaybackState,
     vuMeterEnabled,
@@ -3175,7 +3133,7 @@ function App() {
 
   useEffect(() => {
     const activeAudio =
-      isMacDesktopTauri
+      isTauriApp
         ? vuMeterMonitorAudioRef.current ?? liveRadioAudioRef.current
         : liveRadioAudioRef.current;
     let cancelled = false;
