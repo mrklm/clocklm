@@ -2115,9 +2115,12 @@ function App() {
     && nativeVuMeterIsFresh
     && nativeVuMeterLevels.length > 0;
   const shouldDisableWebAudioVuMeter =
-    shouldUseLinuxNativeVuMeter
-    && nativeVuMeterIsFresh
-    && nativeVuMeterLevels.length > 0;
+    isLinuxDesktopTauri
+    || (
+      shouldUseLinuxNativeVuMeter
+      && nativeVuMeterIsFresh
+      && nativeVuMeterLevels.length > 0
+    );
   const activeVuMeterLevels = shouldPreferNativeVuMeter ? nativeVuMeterLevels : vuMeterLevels;
   const activeVuMeterWaveform = shouldPreferNativeVuMeter
     ? nativeVuMeterWaveform

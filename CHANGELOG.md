@@ -5,6 +5,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.88] - 2026-04-20
+
+### Modifié
+
+ - Stabilise la lecture Linux pendant les tests VU
+
 ## [1.0.87] - 2026-04-20
 
 ### Modifié
