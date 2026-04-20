@@ -2212,7 +2212,6 @@ function App() {
       monitorAudio.pause();
       monitorAudio.removeAttribute('src');
       monitorAudio.load();
-      vuMeterMonitorAudioRef.current = null;
       setVuMeterMonitorToken((value) => value + 1);
     }
 
@@ -3060,6 +3059,7 @@ function App() {
 
   useEffect(() => {
     const primaryAudio = liveRadioAudioRef.current;
+    const monitorAudio = vuMeterMonitorAudioRef.current;
     const shouldUseDesktopMonitor =
       isTauriApp
       && vuMeterEnabled
@@ -3067,22 +3067,22 @@ function App() {
       && Boolean(primaryAudio);
 
     if (!shouldUseDesktopMonitor) {
-      const existingMonitor = vuMeterMonitorAudioRef.current;
-      if (existingMonitor) {
-        existingMonitor.pause();
-        existingMonitor.removeAttribute('src');
-        existingMonitor.load();
-        vuMeterMonitorAudioRef.current = null;
+      if (monitorAudio) {
+        monitorAudio.pause();
+        monitorAudio.removeAttribute('src');
+        monitorAudio.load();
         setVuMeterMonitorToken((value) => value + 1);
       }
       return;
     }
 
-    const monitorAudio = vuMeterMonitorAudioRef.current ?? new Audio();
     let cancelled = false;
     const targetSrc = primaryAudio?.currentSrc || primaryAudio?.src || '';
 
-    vuMeterMonitorAudioRef.current = monitorAudio;
+    if (!monitorAudio) {
+      return;
+    }
+
     monitorAudio.muted = true;
     monitorAudio.volume = 0;
     monitorAudio.preload = 'auto';
@@ -4295,6 +4295,14 @@ function App() {
         ref={liveAudioElementRef}
         className="sr-only"
         preload="none"
+        aria-hidden="true"
+      />
+      <audio
+        ref={vuMeterMonitorAudioRef}
+        className="sr-only"
+        preload="none"
+        muted
+        playsInline
         aria-hidden="true"
       />
     </AppShell>
