@@ -3440,6 +3440,7 @@ function App() {
       });
     };
   }, [
+    isTauriApp,
     isMacDesktopTauri,
     liveRadioPlaybackState,
     shouldDisableWebAudioVuMeter,

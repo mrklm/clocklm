@@ -5,6 +5,12 @@ Toutes les evolutions notables de ce projet seront documentees dans ce fichier.
 Le format s'inspire de Keep a Changelog, adapte au contexte actuel du depot.
 
 
+## [1.0.90] - 2026-04-21
+
+### Modifié
+
+ - Realigne le VU desktop sur la base 1.0.85
+
 ## [1.0.89] - 2026-04-20
 
 ### Modifié
