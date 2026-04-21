@@ -2404,6 +2404,14 @@ function App() {
     }
   };
 
+  const getPreferredLiveAudioElement = () => {
+    if (isLinuxDesktopTauri) {
+      return liveRadioAudioRef.current ?? new Audio();
+    }
+
+    return liveAudioElementRef.current ?? liveRadioAudioRef.current ?? new Audio();
+  };
+
   const startLiveRadioPlayback = async () => {
     if (liveRadioPlaybackState === 'loading') {
       logDesktopMediaDebug('startLiveRadioPlayback:ignored-loading');
@@ -2447,7 +2455,7 @@ function App() {
       if (candidateUrls.length === 0) {
         throw new Error('station_stream_unavailable');
       }
-      const audioElement = liveAudioElementRef.current;
+      const audioElement = isLinuxDesktopTauri ? null : liveAudioElementRef.current;
       const audio = await playAudioFromCandidates(candidateUrls, {
         preload: 'none',
         preferCrossOrigin: !isTauriApp,
@@ -2527,7 +2535,7 @@ function App() {
 
       liveDirectoryTrackIndexRef.current = trackIndex;
 
-      const audio = liveAudioElementRef.current ?? liveRadioAudioRef.current ?? new Audio();
+      const audio = getPreferredLiveAudioElement();
       liveAudioStoppingRef.current = false;
       const playbackUrl = await resolveLiveDirectoryPlaybackUrl(selectedTrack);
       logDesktopMediaDebug('playLiveDirectoryTrack:prepare', {
@@ -2535,7 +2543,7 @@ function App() {
         fileName: selectedTrack.name,
         sourceUrl: selectedTrack.sourceUrl,
         playbackUrl,
-        reusingAudioElement: audio === liveAudioElementRef.current,
+        reusingAudioElement: audio === liveAudioElementRef.current || audio === liveRadioAudioRef.current,
         snapshotBefore: buildAudioDebugSnapshot(audio),
       });
       audio.pause();
